@@ -1,17 +1,20 @@
-from utilities.constants import ErrorMessages
+from utilities.db_client import DBClient
+
+# DB Bağlantısını başlat
+# Not: Testler çok hızlı koşarsa her seferinde bağlanmak yerine
+# bu client bir Singleton veya Fixture olarak da tasarlanabilir.
+db = DBClient()
 
 class TestData:
-    # --- POZİTİF SENARYOLAR ---
     VALID_USERS = [
         ("standard_user", "secret_sauce"),
         ("problem_user", "secret_sauce"),
         ("performance_glitch_user", "secret_sauce")
     ]
 
-    # --- NEGATİF SENARYOLAR ---
-    # Artık string yok, değişken referansı var!
+    # Dinamik Veri: ArangoDB'den geliyor
     INVALID_LOGIN_DATA = [
-        ("locked_out_user", "secret_sauce", ErrorMessages.LOCKED_OUT_ERROR),
-        ("standard_user", "yanlis_sifre", ErrorMessages.INVALID_CRED_ERROR),
-        ("olmayan_kullanici", "secret_sauce", ErrorMessages.INVALID_CRED_ERROR)
+        ("locked_out_user", "secret_sauce", db.get_error_message('LOCKED')),
+        ("standard_user", "yanlis_sifre", db.get_error_message('INVALID')),
+        ("olmayan_kullanici", "secret_sauce", db.get_error_message('INVALID'))
     ]

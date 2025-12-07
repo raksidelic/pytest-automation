@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 
-# .env yüklenir
 load_dotenv()
 
 class Config:
@@ -10,6 +9,9 @@ class Config:
     PASSWORD = os.getenv("APP_PASSWORD")
     BROWSER = os.getenv("BROWSER", "chrome")
     TIMEOUT = int(os.getenv("TIMEOUT", 10))
-
-    if not BASE_URL or not USERNAME or not PASSWORD:
-        raise ValueError("KRITIK HATA: .env dosyasında eksik veri var!")
+    
+    # DB Config
+    ARANGO_URL = os.getenv("ARANGO_URL")
+    ARANGO_DB = os.getenv("ARANGO_DB_NAME")
+    ARANGO_USER = os.getenv("ARANGO_USER")
+    ARANGO_PASS = os.getenv("ARANGO_PASSWORD")
