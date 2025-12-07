@@ -14,13 +14,18 @@ class LoginPage(BasePage):
     def load(self):
         with allure.step(f"{Config.BASE_URL} adresine gidiliyor"):
             self.driver.get(Config.BASE_URL)
+            self.take_screenshot("Sayfa Yüklendi")
 
-    @allure.step("Kullanıcı girişi yapılıyor: {username}")
+    @allure.step("Login işlemi yapılıyor")
     def login(self, username, password):
+        # send_text ve click zaten BasePage içinde screenshot alıyor.
+        # Burada ekstra bir şey yapmaya gerek yok, otomatik çekecek.
         self.send_text(self.USERNAME_INPUT, username)
         self.send_text(self.PASSWORD_INPUT, password)
         self.click(self.LOGIN_BTN)
 
-    @allure.step("Hata mesajı okunuyor")
     def get_error_message(self):
-        return self.find(self.ERROR_MSG).text
+        # Hata mesajı okunduğunda da bir kanıt alalım
+        text = self.find(self.ERROR_MSG).text
+        self.take_screenshot(f"Hata Mesajı Görüldü: {text}")
+        return text
