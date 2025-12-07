@@ -1,41 +1,50 @@
 services:
-  # 1. TEST KOŞUCUSU (Senin Kodların)
-  finom-tests:
+  # 1. TEST KOŞUCUSU
+  pytest-tests:
     build: .
-    container_name: finom-test-runner
+    container_name: pytest-test-runner
     environment:
-      # --- KRİTİK EKLEME ---
-      # Docker içindeyken localhost çalışmaz. 
-      # Konteyner adını (arangoDB) kullanarak yönlendiriyoruz.
+      # Veritabanı Adresi
       - ARANGO_URL=http://arangoDB:8529
       
-      # Remote Browser'a bağlan
+      # Selenoid/Chrome Adresi
       - SELENIUM_REMOTE_URL=http://chrome-browser:4444/wd/hub
-      # Global DB'yi kullan (Kodun içindeki Config bunu algılayacak)
-      - DOCKER_ENV=true
-      # .env dosyasındaki değerleri ezmek istersen buraya yazabilirsin
+      
+      # Config Ayarları
+      - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
+    
     volumes:
-      # Raporları dışarı aktar ki görebilelim
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
+    
     depends_on:
-      - chrome-browser
+      chrome-browser:
+        condition: service_healthy # Browser "Healthy" olana kadar bekle!
+    
     networks:
       - shared-network
 
   # 2. TARAYICI (Apple Silicon Uyumlu Seleniarm)
   chrome-browser:
-    # KRİTİK DEĞİŞİKLİK: 'selenium/standalone-chrome' yerine 'seleniarm/standalone-chromium'
     image: seleniarm/standalone-chromium:latest
-    container_name: finom-chrome
-    shm_size: 2gb # Browser çökmemesi için bellek ayarı
+    container_name: pytest-chrome
+    shm_size: 2gb
     ports:
-      - "4444:4444" # Dışarıdan izlemek istersen (http://localhost:4444)
+      - "4444:4444"
+    
+    # Bu kontrol, browser'ın 4444 portunun hazır olup olmadığını denetler.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 5s
+    
     networks:
       - shared-network
 
-# 3. AĞ (Global DB'ye erişim için)
+# 3. AĞ
 networks:
   shared-network:
     external: true
