@@ -6,11 +6,12 @@ __pycache__/
 # --- Test Çıktıları ve Raporlar ---
 .pytest_cache/
 allure-results/
+logs/
 *.log
 *.html
 
 # --- Ortam ve Editör ---
-venv_finom/
+venv_pytest/
 venv/
 .env
 .vscode/

@@ -4,6 +4,11 @@ services:
     build: .
     container_name: finom-test-runner
     environment:
+      # --- KRİTİK EKLEME ---
+      # Docker içindeyken localhost çalışmaz. 
+      # Konteyner adını (arangoDB) kullanarak yönlendiriyoruz.
+      - ARANGO_URL=http://arangoDB:8529
+      
       # Remote Browser'a bağlan
       - SELENIUM_REMOTE_URL=http://chrome-browser:4444/wd/hub
       # Global DB'yi kullan (Kodun içindeki Config bunu algılayacak)
