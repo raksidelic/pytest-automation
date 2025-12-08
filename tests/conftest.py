@@ -9,8 +9,6 @@ from selenium.webdriver.edge.service import Service as EdgeService
 from config import Config
 
 # --- GÜRÜLTÜ ENGELLEME ---
-# WDM artık kullanılmadığı için onun loglarını kapatmaya gerek yok ama 
-# Selenium'un kendi loglarını temiz tutmak iyidir.
 logging.getLogger("selenium").setLevel(logging.WARNING)
 
 @pytest.fixture(scope="function")
@@ -41,6 +39,14 @@ def driver(request):
             print(f"UYARI: Remote ortamda '{browser_name}' desteklenmiyor, Chrome kullanılıyor.")
             options = webdriver.ChromeOptions()
         
+        # --- SELENOID ÖZEL AYARLARI ---
+        # Bu ayarlar Selenoid UI üzerinden canlı izlemeyi ve video kaydını sağlar
+        selenoid_options = {
+            "enableVNC": True,
+            "enableVideo": False # İsterseniz True yapabilirsiniz
+        }
+        options.set_capability("selenoid:options", selenoid_options)
+
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--start-maximized")
         options.add_argument("--disable-dev-shm-usage")
@@ -60,7 +66,6 @@ def driver(request):
     else:
         # --- A. CHROME ---
         if browser_name == "chrome":
-            # Manager yok, Selenium 4.10+ kendi halleder
             service = ChromeService() 
             options = webdriver.ChromeOptions()
             options.add_argument("--start-maximized")
