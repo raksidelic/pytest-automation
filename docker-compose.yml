@@ -4,10 +4,13 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
+      # Mac üzerindeki DB'ye (host) erişim (Ağ ismi değişse de bu çalışır)
       - ARANGO_URL=http://host.docker.internal:8529
+      # GitLab'den gelen şifreler
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
+      # Diğer ayarlar
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
@@ -15,6 +18,7 @@ services:
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
     
+    # DNS Köprüsü (Hala şart)
     extra_hosts:
       - "host.docker.internal:host-gateway"
       
@@ -24,8 +28,9 @@ services:
     command: ["pytest", "-n", "4", "--dist=loadscope", "--alluredir=allure-results", "--clean-alluredir"]
     depends_on:
       - selenoid
+    # --- YENİ AĞ İSMİ ---
     networks:
-      - shared-network
+      - automation-network
 
   # 2. SELENOID
   selenoid:
@@ -38,12 +43,12 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    # -container-network shared-network diyerek bu ağda kalmasını sağlıyoruz
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "shared-network", "-service-startup-timeout", "2m"]
+    # Komuttaki network ismini de güncelledik!
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "automation-network", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
     networks:
-      - shared-network
+      - automation-network
 
   # 3. SELENOID UI
   selenoid-ui:
@@ -55,10 +60,11 @@ services:
       - "8080:8080"
     command: ["--selenoid-uri", "http://selenoid:4444", "--period", "2s"]
     networks:
-      - shared-network
+      - automation-network
 
-# Ağ Ayarı
+# --- AĞ AYARI (YENİ İSİM) ---
+# Artık eski ağ ile çakışmayacak
 networks:
-  shared-network:
-    name: shared-network
+  automation-network:
+    name: automation-network
     driver: bridge
