@@ -6,17 +6,14 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # Mac üzerindeki DB'ye erişim için
-      - ARANGO_URL=http://host.docker.internal:8529
+      # --- KRİTİK DÜZELTME: Konteyner ismini kullanıyoruz ---
+      - ARANGO_URL=http://arangoDB:8529
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
       - TAKE_SCREENSHOT=${TAKE_SCREENSHOT}
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
-    # --- DÜZELTME 1: DB BAĞLANTISI İÇİN KÖPRÜ ---
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
@@ -37,7 +34,6 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    # Network ismi 'shared-network' olarak sabitlendiği için burası artık çalışacak
     command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "shared-network", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
@@ -56,8 +52,7 @@ services:
     networks:
       - shared-network
 
-# --- DÜZELTME 2: AĞ İSMİ SABİTLEME ---
+# AĞ AYARI: Zaten var olan ağı kullan
 networks:
   shared-network:
-    name: shared-network
-    driver: bridge
+    external: true
