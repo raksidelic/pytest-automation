@@ -6,7 +6,8 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      - ARANGO_URL=http://arangoDB:8529
+      # --- DÜZELTME 1: Konteyner içinden Ana Makineye (Mac DB'ye) erişim ---
+      - ARANGO_URL=http://host.docker.internal:8529
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
@@ -33,7 +34,7 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "shared-network"]
+    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "shared-network", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
     networks:
@@ -51,6 +52,7 @@ services:
     networks:
       - shared-network
 
+# --- DÜZELTME 2: Ağ ismini sabitliyoruz ---
 networks:
   shared-network:
     driver: bridge
