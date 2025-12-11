@@ -6,7 +6,7 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # --- KRİTİK DÜZELTME: Konteyner ismini kullanıyoruz ---
+      # ARTIK KONTEYNER İSMİYLE ERİŞECEK (Çünkü aynı ağdalar)
       - ARANGO_URL=http://arangoDB:8529
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
@@ -34,6 +34,7 @@ services:
       - ./logs:/opt/selenoid/logs
     environment:
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
+    # Network zaten external olduğu için komut satırında ekstra ayara gerek kalmadı ama kalsın
     command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-video-recorder-image", "selenoid/video-recorder:latest-release", "-limit", "10", "-container-network", "shared-network", "-service-startup-timeout", "2m"]
     ports:
       - "4444:4444"
@@ -52,7 +53,8 @@ services:
     networks:
       - shared-network
 
-# AĞ AYARI: Zaten var olan ağı kullan
+# 4. AĞ AYARI
 networks:
   shared-network:
+    name: shared-network
     external: true
