@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # 1. TEST KOŞUCUSU
   pytest-tests:
@@ -6,7 +8,7 @@ services:
     environment:
       - ARANGO_URL=http://arangoDB:8529
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
-      # GitLab'den gelen değişkenler
+      # GitLab'den gelen değişkenleri alıyoruz
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
       - TAKE_SCREENSHOT=${TAKE_SCREENSHOT}
@@ -51,9 +53,7 @@ services:
     networks:
       - shared-network
 
-# --- KRİTİK DÜZELTME BURADA ---
-# 'external: true' YERİNE 'driver: bridge' KULLANIYORUZ
-# Böylece CI/CD ortamında ağ otomatik oluşturulur.
+# AĞ AYARLARI (Otomatik Oluşturulur)
 networks:
   shared-network:
     driver: bridge
