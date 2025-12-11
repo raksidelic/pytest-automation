@@ -6,13 +6,13 @@ services:
     build: .
     container_name: pytest-test-runner
     environment:
-      # --- DÜZELTME 1: Ana makineye (Mac'e) bağlan ---
+      # --- KİLİT NOKTA: DB İÇİN ANA MAKİNEYE GİT ---
       - ARANGO_URL=http://host.docker.internal:8529
-      # GitLab'den gelen değişkenler
+      # GitLab'den gelen şifreler
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
-      # ----------------------------------------------
+      # ---------------------------------------------
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
@@ -20,7 +20,7 @@ services:
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
     
-    # --- DÜZELTME 2: DNS KÖPRÜSÜ (Bunu eklemezsek host'u bulamaz) ---
+    # --- DNS KÖPRÜSÜ (Konteynerin Mac'i görmesi için şart) ---
     extra_hosts:
       - "host.docker.internal:host-gateway"
       
@@ -62,8 +62,10 @@ services:
     networks:
       - shared-network
 
-# AĞ AYARI (Selenoid için gerekli, DB için değil)
+# --- AĞ AYARI: SADELEŞTİRİLDİ ---
+# External yok, name yok. Docker kendi işini kendi yapsın.
+# Ama Selenoid'in bulabilmesi için ismini biz de bilmeliyiz:
 networks:
   shared-network:
-    name: shared-network
     driver: bridge
+    name: shared-network
