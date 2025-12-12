@@ -17,4 +17,4 @@ class TestData:
         ("locked_out_user", "secret_sauce", db.get_error_message('LOCKED')),
         ("standard_user", "yanlis_sifre", db.get_error_message('INVALID')),
         ("olmayan_kullanici", "secret_sauce", db.get_error_message('INVALID'))
-    ]s s
+    ]
