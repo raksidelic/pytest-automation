@@ -3,10 +3,13 @@ stages:
   - report
 
 variables:
-  RECORD_VIDEO: "on_failure"
+  # --- DEĞİŞİKLİK 1: ARTIK HER ŞEYİ KAYDEDECEK ---
+  RECORD_VIDEO: "true" 
   TAKE_SCREENSHOT: "true"
   BROWSER: "chrome"
-  # Bu değişkenler GitLab Settings'den geliyor
+  ARANGO_DB_NAME: $ARANGO_DB_NAME
+  ARANGO_USER: $ARANGO_USER
+  ARANGO_PASSWORD: $ARANGO_PASSWORD
 
 run_tests:
   stage: test
@@ -17,7 +20,7 @@ run_tests:
     # 1. Temizlik
     - docker-compose down --remove-orphans || true
     - docker rm -f selenoid selenoid-ui pytest-test-runner || true
-    # Selenoid artıklarını temizle
+    # Önceden kalmış zombileri temizle
     - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
     - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-chromium:latest) || true
     
@@ -25,15 +28,7 @@ run_tests:
     - docker pull selenoid/video-recorder:latest-release
     - docker pull seleniarm/standalone-chromium:latest
     
-    # --- KESİN ÇÖZÜM: .env DOSYASI OLUŞTURMA ---
-    # Değişkenleri elle dosyaya yazıyoruz ki Docker bunları 'string' olarak değil 'değer' olarak görsün.
-    - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" > .env
-    - echo "ARANGO_USER=$ARANGO_USER" >> .env
-    - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
-    - echo "Ortam dosyası oluşturuldu:"
-    - cat .env # Debug için (Şifreleri logda maskeli gösterebilir veya açık yazabilir, dikkat)
-    
-    # 3. Ağ Ayarı (Hata verirse yoksay)
+    # 3. Ağ Ayarı
     - docker network create qa-network || true
     - docker network connect qa-network arangoDB || true
     
@@ -44,8 +39,16 @@ run_tests:
     # 5. Başlat
     - docker-compose up --build --exit-code-from pytest-tests
 
+  # --- DEĞİŞİKLİK 2: GARANTİLİ TEMİZLİK ---
   after_script:
+    - echo "🧹 Temizlik başlıyor..."
     - docker-compose down
+    # Selenoid'in oluşturduğu video kaydedicileri bul ve yok et
+    - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
+    # Selenoid'in oluşturduğu tarayıcıları bul ve yok et
+    - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-chromium:latest) || true
+    - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-firefox:latest) || true
+    - echo "✨ Ortam tertemiz yapıldı."
 
   artifacts:
     when: always
