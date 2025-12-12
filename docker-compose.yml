@@ -24,20 +24,6 @@ services:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
     
-    # --- BEKLEME MANTIĞI (ZORUNLU) ---
-    # test_data.py dosyan import edilirken DB'ye bağlanmaya çalışıyor.
-    # Bu yüzden DB portu açılmadan python'u başlatmamalıyız.
-    command: >
-      sh -c "
-        echo 'ArangoDB (http://arangoDB:8529) bekleniyor...'
-        until python -c 'import socket; s=socket.socket(); s.settimeout(2); s.connect((\"arangoDB\", 8529)); s.close();' 2>/dev/null; do
-          echo 'DB henüz hazır değil, bekleniyor...'
-          sleep 1
-        done
-        echo 'DB BAĞLANTISI HAZIR! Testler başlıyor...'
-        pytest -n 4 --dist=loadscope --alluredir=allure-results --clean-alluredir
-      "
-    
     depends_on:
       - selenoid
     networks:
