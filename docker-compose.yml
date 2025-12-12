@@ -1,17 +1,18 @@
-version: '3.8'
-
 services:
   # 1. TEST KOŞUCUSU
   pytest-tests:
     build: .
     container_name: pytest-test-runner
     environment:
-      # --- ARTIK KONTEYNER İSMİYLE BAĞLANACAK ---
+      # Ağ üzerinden DB ismi
       - ARANGO_URL=http://arangoDB:8529
-      # ------------------------------------------
+      
+      # .env dosyasından gelen değerleri içeri alıyoruz
       - ARANGO_DB_NAME=${ARANGO_DB_NAME}
       - ARANGO_USER=${ARANGO_USER}
       - ARANGO_PASSWORD=${ARANGO_PASSWORD}
+      
+      # Diğerleri
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
       - RECORD_VIDEO=${RECORD_VIDEO}
@@ -23,32 +24,20 @@ services:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
     
-    # --- DEBUG KOMUTLARI EKLENDİ ---
+    # --- BEKLEME MANTIĞI (ZORUNLU) ---
+    # test_data.py dosyan import edilirken DB'ye bağlanmaya çalışıyor.
+    # Bu yüzden DB portu açılmadan python'u başlatmamalıyız.
     command: >
       sh -c "
-        echo '---------------------------------------------------'
-        echo '🔍 AĞ VE BAĞLANTI ANALİZİ BAŞLIYOR...'
-        
-        echo '1. Ortam Değişkenleri Kontrolü:'
-        env | grep ARANGO
-        
-        echo '2. DNS Çözümleme Testi (arangoDB):'
-        getent hosts arangoDB || echo '❌ DNS ÇÖZÜLEMEDİ!'
-        
-        echo '3. Ping Testi:'
-        ping -c 2 arangoDB || echo '❌ PING BAŞARISIZ!'
-        
-        echo '4. CURL Testi (En Önemlisi):'
-        # ArangoDB versiyon endpointine istek atıyoruz. 
-        # Eğer bu çalışırsa ağ %100 sağlamdır.
-        curl -v --connect-timeout 5 http://arangoDB:8529/_api/version || echo '❌ CURL BAŞARISIZ! Port kapalı veya erişilemiyor.'
-        
-        echo '---------------------------------------------------'
-        echo '🚀 TESTLER BAŞLIYOR...'
-        
+        echo 'ArangoDB (http://arangoDB:8529) bekleniyor...'
+        until python -c 'import socket; s=socket.socket(); s.settimeout(2); s.connect((\"arangoDB\", 8529)); s.close();' 2>/dev/null; do
+          echo 'DB henüz hazır değil, bekleniyor...'
+          sleep 1
+        done
+        echo 'DB BAĞLANTISI HAZIR! Testler başlıyor...'
         pytest -n 4 --dist=loadscope --alluredir=allure-results --clean-alluredir
       "
-      
+    
     depends_on:
       - selenoid
     networks:
