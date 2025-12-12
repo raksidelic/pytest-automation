@@ -7,11 +7,6 @@ services:
       # Ağ üzerinden DB ismi
       - ARANGO_URL=http://arangoDB:8529
       
-      # .env dosyasından gelen değerleri içeri alıyoruz
-      - ARANGO_DB_NAME=${ARANGO_DB_NAME}
-      - ARANGO_USER=${ARANGO_USER}
-      - ARANGO_PASSWORD=${ARANGO_PASSWORD}
-      
       # Diğerleri
       - SELENIUM_REMOTE_URL=http://selenoid:4444/wd/hub
       - BROWSER=${BROWSER}
