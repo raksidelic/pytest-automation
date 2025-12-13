@@ -1,53 +1,59 @@
+# .gitlab-ci.yml:
+
 stages:
   - test
   - report
 
 variables:
-  PYTHONDONTWRITEBYTECODE: "1"
-  # after_script için varsayılan bir değer atıyoruz (Uyarıyı susturur)
-  BROWSERS_JSON: "browsers_intel.json"
+  RECORD_VIDEO: "on_failure"
+  TAKE_SCREENSHOT: "true"
+  BROWSER: "chrome"
+  # Bu değişkenler GitLab Settings'den geliyor
 
 run_tests:
   stage: test
-  # Runner'ın Docker executor kullandığı için imaj belirtmek iyi pratiktir
-  image: docker:latest 
   tags:
     - mac-m3-runner
   
   script:
-    # --- KRİTİK DÜZELTME BAŞLANGICI ---
-    # Docker imajı Alpine Linux tabanlıdır. Python'u ve Docker Compose'u kuruyoruz.
-    - apk add --no-cache python3 py3-pip docker-compose
-    # --- KRİTİK DÜZELTME BİTİŞİ ---
-
-    # 1. Ortam Dosyası (.env) Hazırlığı
-    - echo "ARANGO_URL=http://arangoDB:8529" > .env
-    - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" >> .env
+    # 1. Temizlik
+    - docker-compose down --remove-orphans || true
+    - docker rm -f selenoid selenoid-ui pytest-test-runner || true
+    # Selenoid artıklarını temizle
+    - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
+    - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-chromium:latest) || true
+    
+    # 2. İmajları Hazırla
+    - docker pull selenoid/video-recorder:latest-release
+    - docker pull seleniarm/standalone-chromium:latest
+    
+    # --- KESİN ÇÖZÜM: .env DOSYASI OLUŞTURMA ---
+    # Değişkenleri elle dosyaya yazıyoruz ki Docker bunları 'string' olarak değil 'değer' olarak görsün.
+    - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" > .env
     - echo "ARANGO_USER=$ARANGO_USER" >> .env
     - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
-    - echo "Ortam dosyası hazırlandı."
+    - echo "Ortam dosyası oluşturuldu:"
+    - cat .env # Debug için (Şifreleri logda maskeli gösterebilir veya açık yazabilir, dikkat)
     
-    # 2. Ağ Hazırlığı
+    # 3. Ağ Ayarı (Hata verirse yoksay)
     - docker network create shared-network || true
+    - docker network connect shared-network arangoDB || true
     
-    # 3. Klasör İzinleri
+    # 4. Klasörler
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
     
-    # 4. SİHİRLİ BAŞLANGIÇ 🚀
-    - python3 start_tests.py
+    # 5. Başlat
+    - docker-compose up --build --exit-code-from pytest-tests
 
   after_script:
-    # Variables kısmında varsayılan bir BROWSERS_JSON tanımladığımız için
-    # burası artık hata veya uyarı vermeden çalışacak.
-    - docker-compose down --remove-orphans
+    - docker-compose down
 
   artifacts:
     when: always
     paths:
       - allure-results/
       - videos/
-      - logs/
     expire_in: 3 days
 
 generate_report:
