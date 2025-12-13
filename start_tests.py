@@ -4,77 +4,74 @@ import subprocess
 import sys
 
 def main():
-    # 1. İşlemci Mimarisini Algıla
     arch = platform.machine().lower()
     system = platform.system()
     
     print(f"🖥️  Sistem Taranıyor... İşletim Sistemi: {system} | İşlemci: {arch}")
 
     browsers_json = None
-    architecture_type = None
-
-    # 2. Mimari Kontrolü
-    # ---------------------------------------------------------
+    
+    # --- 1. OTOMATİK HESAPLAMA (Varsayılan) ---
     if any(x in arch for x in ["arm", "aarch64"]):
-        architecture_type = "ARM"
+        print("✅ Tespit: ARM Mimarisi")
         browsers_json = "browsers_arm.json"
-        print("✅ Tespit: ARM Mimarisi (Apple Silicon / RPi)")
-        print("📦 ARM uyumlu imajlar (seleniarm) hazırlanıyor...")
-        subprocess.run(["docker", "pull", "seleniarm/standalone-chromium:latest"], check=False)
-        subprocess.run(["docker", "pull", "seleniarm/standalone-firefox:latest"], check=False)
+        auto_worker_count = "8" # M3 varsayılanı
+        
+        # İmaj hazırlığı...
+        subprocess.run(["docker", "pull", "seleniarm/standalone-chromium:latest"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["docker", "pull", "seleniarm/standalone-firefox:latest"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     elif any(x in arch for x in ["x86_64", "amd64", "i386", "i686"]):
-        architecture_type = "INTEL"
-        browsers_json = "browsers_intel.json"
         print("✅ Tespit: Intel/AMD Mimarisi")
-        print("📦 Intel uyumlu imajlar (selenoid standard) hazırlanıyor...")
-        subprocess.run(["docker", "pull", "selenoid/vnc:chrome_120.0"], check=False)
-        subprocess.run(["docker", "pull", "selenoid/vnc:firefox_120.0"], check=False)
-
+        browsers_json = "browsers_intel.json"
+        auto_worker_count = "4" # Intel varsayılanı
+        
+        # İmaj hazırlığı...
+        subprocess.run(["docker", "pull", "selenoid/vnc:chrome_120.0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["docker", "pull", "selenoid/vnc:firefox_120.0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
-        print(f"❌ HATA: İşlemci mimarisi tanınamadı: '{arch}'")
+        print(f"❌ HATA: Mimarisi tanınamadı.")
         sys.exit(1)
 
-    # 3. Docker Compose'u Başlat
-    # ---------------------------------------------------------
+    # --- 2. MANUEL OVERRIDE (GitLab'dan gelen emir) ---
+    # os.getenv("WORKER_COUNT") varsa onu alır, yoksa auto_worker_count'u kullanır.
+    final_worker_count = os.getenv("WORKER_COUNT", auto_worker_count)
+
     if browsers_json:
-        print(f"\n🚀 Test Ortamı Başlatılıyor... (Konfigürasyon: {browsers_json})")
+        print(f"\n🚀 Test Ortamı Başlatılıyor...")
+        print(f"   📄 Konfigürasyon: {browsers_json}")
+        
+        # Kullanıcıya bilgi ver: Manuel mi, Otomatik mi?
+        if final_worker_count != auto_worker_count:
+            print(f"   ⚠️ MANUEL AYAR AKTİF: Worker sayısı {final_worker_count} olarak zorlandı.")
+        else:
+            print(f"   ⚡ Otomatik Worker Sayısı: {final_worker_count}")
         
         env = os.environ.copy()
         env["BROWSERS_JSON"] = browsers_json
+        env["WORKER_COUNT"] = final_worker_count # Docker'a gidecek nihai sayı
         
         try:
-            print("🧹 Temizlik Başlıyor...")
-            
-            # A. Standart Compose Temizliği
+            # Temizlik
             subprocess.run(["docker-compose", "down", "--remove-orphans"], env=env, stderr=subprocess.DEVNULL)
             
-            # B. ZORUNLU TEMİZLİK (Conflict Hatası Çözümü)
-            # docker-compose bazen proje ismi eşleşmezse eski container'ı silemez.
-            # Biz burada isimden yakalayıp zorla siliyoruz (Eski .gitlab-ci.yml mantığı)
-            containers_to_kill = ["selenoid", "selenoid-ui", "pytest-test-runner"]
-            print(f"🔨 Kalan containerlar zorla siliniyor: {', '.join(containers_to_kill)}")
-            
-            for container in containers_to_kill:
-                # 'docker rm -f' varsa siler, yoksa hata vermez (stderr susturuldu)
-                subprocess.run(["docker", "rm", "-f", container], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            # Başlat ve Exit Code'u Yakala
-            print("🚀 Testler Başlatılıyor...")
+            # Başlat
+            print("🎬 Testler Koşuluyor...")
             result = subprocess.run(
                 ["docker-compose", "up", "--build", "--exit-code-from", "pytest-tests"], 
                 env=env
             )
-            
-            sys.exit(result.returncode)
+            exit_code = result.returncode
 
         except KeyboardInterrupt:
-            print("\n🛑 İşlem kullanıcı tarafından iptal edildi.")
-            sys.exit(0)
-            
+            exit_code = 0
         except Exception as e:
-            print(f"\n❌ Beklenmeyen bir hata oluştu: {e}")
-            sys.exit(1)
+            print(f"Hata: {e}")
+            exit_code = 1
+        finally:
+            print("\n🧹 Ortam temizleniyor...")
+            subprocess.run(["docker-compose", "down", "--remove-orphans"], env=env, stderr=subprocess.DEVNULL)
+            sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()
