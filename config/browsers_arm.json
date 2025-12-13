@@ -5,7 +5,14 @@
             "latest": {
                 "image": "seleniarm/standalone-chromium:latest",
                 "port": "4444",
-                "path": "/wd/hub"
+                "path": "/wd/hub",
+                "env": [
+                    "SE_VNC_NO_PASSWORD=1",
+                    "SE_SCREEN_WIDTH=1920",
+                    "SE_SCREEN_HEIGHT=1080",
+                    "SE_NODE_MAX_SESSIONS=1",
+                    "SE_NODE_OVERRIDE_MAX_SESSIONS=true"
+                ]
             }
         }
     },
@@ -15,7 +22,14 @@
             "latest": {
                 "image": "seleniarm/standalone-firefox:latest",
                 "port": "4444",
-                "path": "/wd/hub"
+                "path": "/wd/hub",
+                "env": [
+                    "SE_VNC_NO_PASSWORD=1",
+                    "SE_SCREEN_WIDTH=1920",
+                    "SE_SCREEN_HEIGHT=1080",
+                    "SE_NODE_MAX_SESSIONS=1",
+                    "SE_NODE_OVERRIDE_MAX_SESSIONS=true"
+                ]
             }
         }
     }
