@@ -3,46 +3,50 @@ stages:
   - report
 
 variables:
-  # GitLab Settings'den gelenler dışında bunları tanımlıyoruz
-  # DOCKER_HOST ve diğer ayarlar runner konfigürasyonuna göre değişebilir
   PYTHONDONTWRITEBYTECODE: "1"
+  # after_script için varsayılan bir değer atıyoruz (Uyarıyı susturur)
+  BROWSERS_JSON: "browsers_intel.json"
 
 run_tests:
   stage: test
+  # Runner'ın Docker executor kullandığı için imaj belirtmek iyi pratiktir
+  image: docker:latest 
   tags:
-    # İster mac-m3-runner kullan, ister linux-runner. Script otomatik uyum sağlar.
-    - mac-m3-runner 
+    - mac-m3-runner
   
   script:
-    # 1. Ortam Dosyası (.env) Hazırlığı (Secrets Injection)
+    # --- KRİTİK DÜZELTME BAŞLANGICI ---
+    # Docker imajı Alpine Linux tabanlıdır. Python'u ve Docker Compose'u kuruyoruz.
+    - apk add --no-cache python3 py3-pip docker-compose
+    # --- KRİTİK DÜZELTME BİTİŞİ ---
+
+    # 1. Ortam Dosyası (.env) Hazırlığı
     - echo "ARANGO_URL=http://arangoDB:8529" > .env
     - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" >> .env
     - echo "ARANGO_USER=$ARANGO_USER" >> .env
     - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
     - echo "Ortam dosyası hazırlandı."
     
-    # 2. Ağ Hazırlığı (Dış ağ kullanıyorsan)
+    # 2. Ağ Hazırlığı
     - docker network create shared-network || true
-    # DB servisi başka bir yerde çalışıyorsa burayı ona göre ayarlarsın
-    # Eğer DB de compose içindeyse bu satıra gerek kalmayabilir.
     
     # 3. Klasör İzinleri
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
     
     # 4. SİHİRLİ BAŞLANGIÇ 🚀
-    # Docker pull, rm, up işlemlerini ve mimari seçimini bu script yapar.
     - python3 start_tests.py
 
   after_script:
-    # Test bitince (başarılı/başarısız) ortamı temizle
+    # Variables kısmında varsayılan bir BROWSERS_JSON tanımladığımız için
+    # burası artık hata veya uyarı vermeden çalışacak.
     - docker-compose down --remove-orphans
 
   artifacts:
     when: always
     paths:
       - allure-results/
-      - videos/ # Eğer video kaydı açarsan buraya düşer
+      - videos/
       - logs/
     expire_in: 3 days
 
