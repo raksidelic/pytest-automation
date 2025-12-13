@@ -5,8 +5,7 @@
             "latest": {
                 "image": "seleniarm/standalone-chromium:latest",
                 "port": "4444",
-                "path": "/wd/hub", 
-                "env": ["SE_NODE_MAX_SESSIONS=1", "SE_NODE_OVERRIDE_MAX_SESSIONS=true"]
+                "path": "/wd/hub"
             }
         }
     },
@@ -16,8 +15,7 @@
             "latest": {
                 "image": "seleniarm/standalone-firefox:latest",
                 "port": "4444",
-                "path": "/wd/hub",
-                "env": ["SE_NODE_MAX_SESSIONS=1", "SE_NODE_OVERRIDE_MAX_SESSIONS=true"]
+                "path": "/wd/hub"
             }
         }
     }

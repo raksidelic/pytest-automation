@@ -1,3 +1,5 @@
+# driver_factory.py:
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
@@ -18,11 +20,10 @@ class DriverFactory:
                 options.add_argument("--headless")
 
             if remote_url:
-                # Selenoid Specific Capabilities
+                # Video KAPALI, VNC AÇIK (Canlı izleme için)
                 selenoid_options = {
                     "enableVNC": True,
-                    "enableVideo": True,
-                    "videoName": f"{test_name}.mp4".replace(" ", "_"),
+                    "enableVideo": False, 
                     "name": test_name
                 }
                 options.set_capability("selenoid:options", selenoid_options)
@@ -42,8 +43,7 @@ class DriverFactory:
             if remote_url:
                 selenoid_options = {
                     "enableVNC": True,
-                    "enableVideo": True,
-                    "videoName": f"{test_name}.mp4".replace(" ", "_"),
+                    "enableVideo": False,
                     "name": test_name
                 }
                 options.set_capability("selenoid:options", selenoid_options)
@@ -51,9 +51,8 @@ class DriverFactory:
             else:
                 return webdriver.Firefox(options=options)
 
-        # 3. MOBILE (APPIUM - Gelecek Hazırlığı)
         elif browser in ["android", "ios"]:
-            raise NotImplementedError("Mobil driver konfigürasyonu henüz eklenmedi (Roadmap Adım 3)")
+            raise NotImplementedError("Mobil driver konfigürasyonu henüz eklenmedi")
             
         else:
             raise ValueError(f"Desteklenmeyen tarayıcı türü: {browser}")

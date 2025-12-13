@@ -1,59 +1,49 @@
-# .gitlab-ci.yml:
-
 stages:
   - test
   - report
 
 variables:
-  RECORD_VIDEO: "on_failure"
-  TAKE_SCREENSHOT: "true"
-  BROWSER: "chrome"
-  # Bu değişkenler GitLab Settings'den geliyor
+  # GitLab Settings'den gelenler dışında bunları tanımlıyoruz
+  # DOCKER_HOST ve diğer ayarlar runner konfigürasyonuna göre değişebilir
+  PYTHONDONTWRITEBYTECODE: "1"
 
 run_tests:
   stage: test
   tags:
-    - mac-m3-runner
+    # İster mac-m3-runner kullan, ister linux-runner. Script otomatik uyum sağlar.
+    - mac-m3-runner 
   
   script:
-    # 1. Temizlik
-    - docker-compose down --remove-orphans || true
-    - docker rm -f selenoid selenoid-ui pytest-test-runner || true
-    # Selenoid artıklarını temizle
-    - docker rm -f $(docker ps -a -q --filter ancestor=selenoid/video-recorder:latest-release) || true
-    - docker rm -f $(docker ps -a -q --filter ancestor=seleniarm/standalone-chromium:latest) || true
-    
-    # 2. İmajları Hazırla
-    - docker pull selenoid/video-recorder:latest-release
-    - docker pull seleniarm/standalone-chromium:latest
-    
-    # --- KESİN ÇÖZÜM: .env DOSYASI OLUŞTURMA ---
-    # Değişkenleri elle dosyaya yazıyoruz ki Docker bunları 'string' olarak değil 'değer' olarak görsün.
-    - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" > .env
+    # 1. Ortam Dosyası (.env) Hazırlığı (Secrets Injection)
+    - echo "ARANGO_URL=http://arangoDB:8529" > .env
+    - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" >> .env
     - echo "ARANGO_USER=$ARANGO_USER" >> .env
     - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
-    - echo "Ortam dosyası oluşturuldu:"
-    - cat .env # Debug için (Şifreleri logda maskeli gösterebilir veya açık yazabilir, dikkat)
+    - echo "Ortam dosyası hazırlandı."
     
-    # 3. Ağ Ayarı (Hata verirse yoksay)
+    # 2. Ağ Hazırlığı (Dış ağ kullanıyorsan)
     - docker network create shared-network || true
-    - docker network connect shared-network arangoDB || true
+    # DB servisi başka bir yerde çalışıyorsa burayı ona göre ayarlarsın
+    # Eğer DB de compose içindeyse bu satıra gerek kalmayabilir.
     
-    # 4. Klasörler
+    # 3. Klasör İzinleri
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
     
-    # 5. Başlat
-    - docker-compose up --build --exit-code-from pytest-tests
+    # 4. SİHİRLİ BAŞLANGIÇ 🚀
+    # Docker pull, rm, up işlemlerini ve mimari seçimini bu script yapar.
+    - python3 start_tests.py
 
   after_script:
-    - docker-compose down
+    # Test bitince (başarılı/başarısız) ortamı temizle
+    - docker-compose down --remove-orphans
 
   artifacts:
     when: always
     paths:
       - allure-results/
-      - videos/
+      - videos/ # Eğer video kaydı açarsan buraya düşer
+      - logs/
     expire_in: 3 days
 
 generate_report:
