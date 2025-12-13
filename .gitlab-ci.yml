@@ -3,11 +3,9 @@ stages:
   - report
 
 variables:
-  # GitLab Settings'den gelenler dışında:
+  # Python'un bytecode (.pyc) oluşturmasını engeller
   PYTHONDONTWRITEBYTECODE: "1"
-  # after_script'in boş kalıp hata vermemesi için varsayılan bir değer:
-  BROWSERS_JSON: "browsers_intel.json"
-  # Video kaydı ayarları (start_tests.py içindeki mantıkla uyumlu çalışır)
+  # Video ve Screenshot ayarları
   RECORD_VIDEO: "on_failure"
   TAKE_SCREENSHOT: "true"
 
@@ -16,21 +14,19 @@ run_tests:
   image: docker:latest
   tags:
     - mac-m3-runner
-
+  
   script:
-    # 1. BAĞIMLILIKLARI YÜKLE (Python Hatasının Çözümü)
-    # docker:latest imajı boştur, içine python3 ve docker-compose kuruyoruz.
+    # 1. BAĞIMLILIKLARI YÜKLE
     - apk add --no-cache python3 py3-pip docker-compose
 
-    # 2. ORTAM (.env) DOSYASINI HAZIRLA (Stabil sürümden alındı)
+    # 2. ORTAM (.env) DOSYASINI HAZIRLA
     - echo "ARANGO_URL=http://arangoDB:8529" > .env
     - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" >> .env
     - echo "ARANGO_USER=$ARANGO_USER" >> .env
     - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
     - echo "Ortam dosyası oluşturuldu."
     
-    # 3. AĞ AYARLARI (Stabil sürümden alındı - Kritik!)
-    # Dışarıdaki 'arangoDB' container'ını test ağına bağlıyoruz.
+    # 3. AĞ AYARLARI
     - docker network create shared-network || true
     - docker network connect shared-network arangoDB || true
     
@@ -39,14 +35,14 @@ run_tests:
     - chmod -R 777 videos allure-results logs
     
     # 5. AKILLI BAŞLATMA 🚀
-    # - İşlemci mimarisini algılar (ARM vs Intel)
-    # - Doğru imajları (Seleniarm vs Selenoid) indirir
-    # - docker-compose up komutunu çalıştırır ve test sonucunu bildirir
+    # Mimarisi ne olursa olsun (ARM/Intel), doğru dosyayı python scripti seçer.
     - python3 start_tests.py
 
   after_script:
-    # Test bitince temizlik yap (Varsayılan değişken ile çalışır)
-    - docker-compose down --remove-orphans
+    # DÜZELTME: Global değişken yerine, temizlik sırasında hatayı susturmak için
+    # 'ignore_me' gibi önemsiz bir değer atıyoruz. 
+    # 'down' komutu konfigürasyon dosyasının içeriğiyle ilgilenmez.
+    - BROWSERS_JSON=ignore_me docker-compose down --remove-orphans
 
   artifacts:
     when: always
