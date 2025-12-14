@@ -2,22 +2,22 @@ stages:
   - test
   - report
 
-spec:
-  inputs:
-    video_mode:
-      description: "Video Kayıt Stratejisi"
-      default: "on_failure"
-      options:
-        - "true"
-        - "false"
-        - "on_failure"
-
 variables:
   # Python'un bytecode (.pyc) oluşturmasını engeller
   PYTHONDONTWRITEBYTECODE: "1"
-  # Video ve Screenshot ayarları
-  RECORD_VIDEO: $[[ inputs.video_mode ]]
+  
+  # Screenshot her zaman açık
   TAKE_SCREENSHOT: "true"
+
+  # --- VİDEO KAYIT AYARLARI (Dropdown Menü) ---
+  # 'spec' yerine standart variables 'options' kullanıyoruz.
+  RECORD_VIDEO:
+    value: "on_failure"  # Varsayılan değer
+    options:
+      - "true"
+      - "false"
+      - "on_failure"
+    description: "Video Kayıt Stratejisi"
 
 run_tests:
   stage: test
@@ -34,9 +34,11 @@ run_tests:
     - echo "ARANGO_DB_NAME=$ARANGO_DB_NAME" >> .env
     - echo "ARANGO_USER=$ARANGO_USER" >> .env
     - echo "ARANGO_PASSWORD=$ARANGO_PASSWORD" >> .env
-    - echo "Ortam dosyası oluşturuldu."
-
+    
+    # Dropdown'dan seçilen değeri .env'ye yazıyoruz
     - echo "RECORD_VIDEO=$RECORD_VIDEO" >> .env
+    
+    - echo "Ortam dosyası oluşturuldu."
     
     # 3. AĞ AYARLARI
     - docker network create shared-network || true
@@ -47,13 +49,9 @@ run_tests:
     - chmod -R 777 videos allure-results logs
     
     # 5. AKILLI BAŞLATMA 🚀
-    # Mimarisi ne olursa olsun (ARM/Intel), doğru dosyayı python scripti seçer.
     - python3 start_tests.py
 
   after_script:
-    # DÜZELTME: Global değişken yerine, temizlik sırasında hatayı susturmak için
-    # 'ignore_me' gibi önemsiz bir değer atıyoruz. 
-    # 'down' komutu konfigürasyon dosyasının içeriğiyle ilgilenmez.
     - BROWSERS_JSON=ignore_me docker-compose down --remove-orphans
 
   artifacts:
