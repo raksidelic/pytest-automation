@@ -6,7 +6,8 @@ import logging
 import os
 import json
 import docker
-import fcntl  # Linux'ta dosya kilitleme için (xdist uyumlu)
+import fcntl
+import glob
 from config import Config
 from utilities.db_client import DBClient
 from utilities.driver_factory import DriverFactory
@@ -16,8 +17,9 @@ logger = logging.getLogger("Conftest")
 logging.getLogger("selenium").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-# Silinecek videoların tutulacağı Manifest Dosyası
-CLEANUP_MANIFEST = "/app/allure-results/cleanup_manifest.jsonl"
+# Manifest Dosyası ve Sonuç Klasörü
+ALLURE_RESULTS_DIR = "/app/allure-results"
+CLEANUP_MANIFEST = os.path.join(ALLURE_RESULTS_DIR, "cleanup_manifest.jsonl")
 
 @pytest.fixture(scope="session")
 def db_client():
@@ -25,20 +27,104 @@ def db_client():
     yield client
     client.close()
 
-def _register_video_for_deletion(video_name):
+def _log_video_decision(node_id, test_name, session_id, video_name, action):
     """
-    Worker'lar (paralel çalışanlar) silinecek dosyayı buraya yazar.
-    fcntl ile dosya kilitlenir, böylece veriler birbirine karışmaz.
+    Kritik verileri manifestoya kaydeder.
+    EKLENEN: 'node_id' (Eşsiz Test Kimliği) ve 'session_id' (Docker Konteyner Kimliği)
     """
-    entry = {"video": video_name, "action": "delete"}
+    entry = {
+        "node_id": node_id,       # tests/test_login.py::test_func[user1] (Eşsiz)
+        "test_name": test_name,   # test_func[user1]
+        "session_id": session_id, # Docker konteynerini bulmak için
+        "video": video_name, 
+        "action": action
+    }
     try:
-        # 'a' modu ile append (ekleme) yapıyoruz
         with open(CLEANUP_MANIFEST, "a") as f:
-            fcntl.flock(f, fcntl.LOCK_EX) # 🔒 KİLİTLE (Diğer workerlar bekler)
+            fcntl.flock(f, fcntl.LOCK_EX) # 🔒 Güvenli Yazma
             f.write(json.dumps(entry) + "\n")
-            fcntl.flock(f, fcntl.LOCK_UN) # 🔓 KİLİDİ AÇ
+            fcntl.flock(f, fcntl.LOCK_UN)
     except Exception as e:
         logger.error(f"Manifest dosyasına yazılamadı: {e}")
+
+def _match_json_to_test(json_data, target_node_id):
+    """
+    Allure JSON'ı ile Pytest Node ID'sini akıllı eşleştirme.
+    """
+    # 1. FullName Kontrolü (Genellikle: tests.test_login#test_func)
+    full_name = json_data.get("fullName", "")
+    
+    # Node ID'yi paket yapısına çevir (tests/test_x.py -> tests.test_x)
+    # Basit bir "içeriyor mu" kontrolü çoğu zaman yeterlidir ama parametreleri ayıklamak lazım.
+    
+    # JSON'daki isim bizim node_id'nin son parçasıyla uyuşuyor mu?
+    # Örn: node_id="...::test_login[user1]" vs JSON Name="test_login" + params
+    
+    # En güvenli yol: History ID veya Label kontrolü ama basitçe:
+    # Allure 'fullName' genellikle dosya yolu ve fonksiyon adını içerir.
+    # Bizim target_node_id de bunları içerir.
+    
+    # Basitleştirilmiş Eşleşme:
+    # node_id içindeki dosya yolunu (tests/test_login.py) paket formatına (tests.test_login) çevirip ara.
+    normalized_node = target_node_id.replace("/", ".").replace(".py", "").replace("::", ".")
+    
+    if full_name and full_name in normalized_node:
+        return True
+        
+    # Parametreli testler için 'name' kontrolü (Riskli ama yedek plan)
+    # Eğer parametre varsa node_id içinde '[' karakteri olur.
+    json_name = json_data.get("name", "")
+    if json_name in target_node_id:
+        # Eğer node_id parametre içeriyorsa ve json_name ana isimi karşılıyorsa...
+        # Daha derin kontrol gerekebilir ama şimdilik bu, sadece 'name' == 'name' den çok daha iyidir.
+        return True
+        
+    return False
+
+def _inject_video_to_teardown(node_id, video_filename):
+    """
+    Doğru JSON dosyasını bulup videoyu enjekte eder.
+    """
+    json_files = glob.glob(os.path.join(ALLURE_RESULTS_DIR, "*-result.json"))
+    
+    for json_file in json_files:
+        try:
+            with open(json_file, "r+") as f:
+                data = json.load(f)
+                
+                # GELİŞMİŞ EŞLEŞTİRME (Fix for Risk 1)
+                if _match_json_to_test(data, node_id):
+                    
+                    video_attachment = {
+                        "name": "Test Videosu",
+                        "source": video_filename, 
+                        "type": "video/mp4"
+                    }
+
+                    # Teardown (Afters) Hedefleme
+                    target_step = None
+                    if "afters" in data:
+                        for step in data["afters"]:
+                            if "driver" in step.get("name", ""):
+                                target_step = step
+                                break
+                        if not target_step and data["afters"]:
+                            target_step = data["afters"][-1]
+
+                    if target_step:
+                        if "attachments" not in target_step: target_step["attachments"] = []
+                        if not any(a['source'] == video_filename for a in target_step['attachments']):
+                            target_step["attachments"].append(video_attachment)
+                    else:
+                        if "attachments" not in data: data["attachments"] = []
+                        data["attachments"].append(video_attachment)
+
+                    # Dosyayı güncelle
+                    f.seek(0)
+                    json.dump(data, f, indent=4)
+                    f.truncate()
+                    return # Eşleşme bulundu ve işlendi, çık.
+        except: continue
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
@@ -49,6 +135,7 @@ def pytest_runtest_makereport(item, call):
 @pytest.fixture(scope="function")
 def driver(request):
     test_name = request.node.name
+    node_id = request.node.nodeid # Eşsiz ID (Fix for Risk 1)
     driver_instance = None
     
     # 1. SETUP
@@ -62,7 +149,7 @@ def driver(request):
 
     # 2. TEARDOWN
     if driver_instance:
-        # Test durumunu kontrol et
+        # Hata kontrolü
         is_failed = False
         node = request.node
         if getattr(node, 'rep_call', None) and node.rep_call.failed:
@@ -73,34 +160,38 @@ def driver(request):
                     name="Hata_Goruntusu", 
                     attachment_type=allure.attachment_type.PNG
                 )
-            except:
-                pass
+            except: pass
 
-        # Driver'ı kapat (Selenoid videoyu diske yazar)
-        driver_instance.quit()
-
-         # --- 3. AKILLI KAYIT MANTIĞI (GÜNCELLENEN KISIM) ---
+        # Gerekli verileri topla
         video_name = getattr(driver_instance, 'video_name', None)
         
+        # Session ID'yi al (Fix for Risk 3)
+        # Driver kapanmadan önce session_id'yi almalıyız!
+        session_id = None
+        try:
+            session_id = driver_instance.session_id
+        except: pass
+
+        # Driver'ı kapat
+        driver_instance.quit()
+
+        # 3. KARAR VE MANİFESTO
         if video_name:
-            mode = Config.RECORD_VIDEO.lower() # Küçük harf garantisi
+            mode = Config.RECORD_VIDEO.lower()
+            should_keep = False
             
-            # Senaryo 1: Sadece Hataları Tut (on_failure)
-            # Eğer mod 'on_failure' ise ve test BAŞARILI geçtiyse -> SİL
-            delete_if_passed = (mode == "on_failure" and not is_failed)
+            if mode == "true": should_keep = True
+            elif mode == "on_failure" and is_failed: should_keep = True
+            elif mode == "on_success" and not is_failed: should_keep = True
             
-            # Senaryo 2: Sadece Başarılıları Tut (on_success) (YENİ)
-            # Eğer mod 'on_success' ise ve test BAŞARISIZ olduysa -> SİL
-            delete_if_failed = (mode == "on_success" and is_failed)
+            action = "keep" if should_keep else "delete"
             
-            # Yukarıdaki şartlardan biri sağlanıyorsa videoyu silinecekler listesine ekle
-            if delete_if_passed or delete_if_failed:
-                _register_video_for_deletion(video_name)
+            # Güncellenmiş Karar Kaydı (NodeID ve SessionID ile)
+            _log_video_decision(node_id, test_name, session_id, video_name, action)
 
 def pytest_sessionfinish(session, exitstatus):
     """
-    TOPLU KIYIM ZAMANI 💀
-    Tüm testler bittiğinde Master Node burayı çalıştırır.
+    POST-PROCESS: SENKRONİZASYON VE İŞLEME
     """
     if hasattr(session.config, 'workerinput'):
         return
@@ -108,99 +199,70 @@ def pytest_sessionfinish(session, exitstatus):
     if not os.path.exists(CLEANUP_MANIFEST):
         return
 
-    logger.info("🧹 [BATCH CLEANUP] Temizlik manifestosu okunuyor...")
+    logger.info("🧹 [POST-PROCESS] Docker Senkronizasyonu ve Raporlama...")
     
-    # Docker Client'ı başlat (requirements.txt içinde var)
     try:
         docker_client = docker.from_env()
-    except Exception as e:
-        logger.warning(f"Docker bağlantısı sağlanamadı: {e}")
+    except:
         docker_client = None
     
-    deleted_count = 0
+    manifest_entries = []
     try:
         with open(CLEANUP_MANIFEST, "r") as f:
-            lines = f.readlines()
-            
-        for line in lines:
-            try:
-                data = json.loads(line.strip())
-                video_file = data.get("video") # Örn: fe604...mp4
-                
-                file_path = os.path.join("/app/allure-results", video_file)
-                
-                # --- 2. SİSTEM SEVİYESİ SENKRONİZASYON (NO SLEEP) ---
-                # "Bir şekilde anlasın" dediğiniz yer burası:
-                # Rastgele uyumak yerine, o dosyayı yazan konteyneri bulup
-                # "İşin bitene kadar (kapanana kadar) buradayım" diyoruz.
-                if docker_client:
-                    try:
-                        # Şu an çalışan tüm konteynerleri tara
-                        for container in docker_client.containers.list():
-                            # Konteynerin özelliklerinde bizim dosya ismimiz geçiyor mu?
-                            # (Selenoid, dosya ismini Env veya Cmd olarak konteynere verir)
-                            if video_file in str(container.attrs):
-                                # Bulduk! Konteyner kapanana kadar blokla (Wait for Exit)
-                                # Bu bir sleep değildir, işletim sistemi sinyali bekler.
-                                container.wait()
-                                break
-                    except Exception as e:
-                        # Konteyner o sırada zaten gittiyse hata verebilir, sorun yok.
-                        pass
-                # ----------------------------------------------------
+            for line in f:
+                try: manifest_entries.append(json.loads(line.strip()))
+                except: pass
+    except: pass
 
-                # Konteyner öldüğüne göre dosya artık diskte olmalı.
-                if os.path.exists(file_path):
+    processed_count = 0
+    deleted_count = 0
+
+    for entry in manifest_entries:
+        video_file = entry.get("video")
+        action = entry.get("action")
+        node_id = entry.get("node_id") # Test ismi yerine Node ID kullanıyoruz
+        session_id = entry.get("session_id") # Konteyner ID
+        
+        file_path = os.path.join(ALLURE_RESULTS_DIR, video_file)
+
+        # --- A. GÜÇLENDİRİLMİŞ SENKRONİZASYON (Fix for Risk 3) ---
+        # Dosya ismi yerine Session ID ile konteyner arıyoruz.
+        if docker_client and session_id:
+            try:
+                # Selenoid, konteynerleri genellikle session_id ile etiketler veya adlandırır.
+                # Ya da video kaydediciyi session_id ile ilişkilendirir.
+                # En geniş kapsamlı arama: Tüm konteynerleri tara.
+                for container in docker_client.containers.list(ignore_removed=True):
+                    # Container ID veya Name session_id içeriyor mu? (Selenoid Standardı)
+                    c_id = container.id
+                    c_name = container.name
+                    
+                    # Ayrıca video dosyası adı container env/cmd içinde var mı? (Yedek kontrol)
+                    # Hem Session ID hem de Dosya Adı kontrolü yapıyoruz.
+                    is_related = (session_id in c_id) or \
+                                 (session_id in c_name) or \
+                                 (video_file in str(container.attrs))
+                    
+                    if is_related:
+                        container.wait() # Bekle
+                        break
+            except: pass
+        
+        # --- B. AKSİYON ---
+        if action == "keep":
+            if os.path.exists(file_path):
+                # Yeni inject fonksiyonu node_id kullanıyor
+                _inject_video_to_teardown(node_id, video_file)
+                processed_count += 1
+                
+        elif action == "delete":
+            if os.path.exists(file_path):
+                try:
                     os.remove(file_path)
                     deleted_count += 1
-                else:
-                    logger.warning(f"⚠️ Dosya diskte bulunamadı: {video_file}")
+                except: pass
 
-            except Exception as inner_e:
-                logger.warning(f"Satır işlenemedi: {inner_e}")
-                
-        if os.path.exists(CLEANUP_MANIFEST):
-             os.remove(CLEANUP_MANIFEST)
-             
-        logger.info(f"✅ [CLEANUP COMPLETE] Toplam {deleted_count} adet gereksiz video disken silindi.")
-        
-    except Exception as e:
-        logger.error(f"❌ Toplu silme işleminde hata: {e}")
-    """
-    TOPLU KIYIM ZAMANI 💀
-    Tüm testler bittiğinde Master Node burayı çalıştırır.
-    """
-    # Sadece Master Node çalıştırsın (Workerlar çalıştırmasın)
-    if hasattr(session.config, 'workerinput'):
-        return
-
-    if not os.path.exists(CLEANUP_MANIFEST):
-        return
-
-    logger.info("🧹 [BATCH CLEANUP] Temizlik manifestosu okunuyor...")
-    
-    deleted_count = 0
-    try:
-        with open(CLEANUP_MANIFEST, "r") as f:
-            lines = f.readlines()
-            
-        for line in lines:
-            try:
-                data = json.loads(line.strip())
-                video_file = data.get("video")
-                
-                # Dosya yolu: /app/allure-results/test_x.mp4
-                file_path = os.path.join("/app/allure-results", video_file)
-                
-                if os.path.exists(file_path):
-                    os.remove(file_path) # 🔥 API YOK, DİREKT SİLME VAR
-                    deleted_count += 1
-            except Exception as inner_e:
-                logger.warning(f"Satır işlenemedi: {inner_e}")
-                
-        # İş bittikten sonra manifestoyu da temizle
+    if os.path.exists(CLEANUP_MANIFEST):
         os.remove(CLEANUP_MANIFEST)
-        logger.info(f"✅ [CLEANUP COMPLETE] Toplam {deleted_count} adet gereksiz video disken silindi.")
         
-    except Exception as e:
-        logger.error(f"❌ Toplu silme işleminde hata: {e}")
+    logger.info(f"✅ Tamamlandı. Eklenen: {processed_count} | Silinen: {deleted_count}")

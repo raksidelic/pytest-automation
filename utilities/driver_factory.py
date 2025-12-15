@@ -78,7 +78,7 @@ class DriverFactory:
         selenoid_options = {
             "enableVNC": True,
             "enableVideo": should_record,  # True/False kararı buraya bağlandı
-            "videoName": video_name,       # Video ismini Selenoid'e bildiriyoruz
+            # "videoName": video_name,       # Video ismini Selenoid'e bildiriyoruz
             "videoScreenSize": "1920x1080",
             "name": test_name,
             "labels": {"env": "test", "team": "qa"}
