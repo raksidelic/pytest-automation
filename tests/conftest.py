@@ -17,7 +17,7 @@ logging.getLogger("selenium").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 # Silinecek videoların tutulacağı Manifest Dosyası
-CLEANUP_MANIFEST = "/app/videos/cleanup_manifest.jsonl"
+CLEANUP_MANIFEST = "/app/allure-results/cleanup_manifest.jsonl"
 
 @pytest.fixture(scope="session")
 def db_client():
@@ -127,7 +127,7 @@ def pytest_sessionfinish(session, exitstatus):
                 data = json.loads(line.strip())
                 video_file = data.get("video") # Örn: fe604...mp4
                 
-                file_path = os.path.join("/app/videos", video_file)
+                file_path = os.path.join("/app/allure-results", video_file)
                 
                 # --- 2. SİSTEM SEVİYESİ SENKRONİZASYON (NO SLEEP) ---
                 # "Bir şekilde anlasın" dediğiniz yer burası:
@@ -189,8 +189,8 @@ def pytest_sessionfinish(session, exitstatus):
                 data = json.loads(line.strip())
                 video_file = data.get("video")
                 
-                # Dosya yolu: /app/videos/test_x.mp4
-                file_path = os.path.join("/app/videos", video_file)
+                # Dosya yolu: /app/allure-results/test_x.mp4
+                file_path = os.path.join("/app/allure-results", video_file)
                 
                 if os.path.exists(file_path):
                     os.remove(file_path) # 🔥 API YOK, DİREKT SİLME VAR

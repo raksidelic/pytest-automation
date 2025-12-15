@@ -14,7 +14,6 @@ services:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./videos:/app/videos
     depends_on:
       selenoid:
         condition: service_started
@@ -32,10 +31,10 @@ services:
       - "./config:/etc/selenoid"
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./logs:/opt/selenoid/logs"
-      - "./videos:/opt/selenoid/video"  # <--- BU SATIRI EKLEYİN
+      - "./allure-results:/opt/selenoid/video"
     environment:
       - DOCKER_API_VERSION=1.45
-      - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/videos
+      - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/allure-results
     # Dinamik Tarayıcı Dosyası Seçimi (start_tests.py burayı doldurur)
     command: ["-conf", "/etc/selenoid/${BROWSERS_JSON}", "-log-output-dir", "/opt/selenoid/logs", "-video-output-dir", "/opt/selenoid/video", "-container-network", "shared-network", "-limit", "10"]
     ports:
