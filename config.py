@@ -17,7 +17,7 @@ class Config:
     HEADLESS = os.getenv("HEADLESS", "false").lower() == "true"
     
     # --- VIDEO KAYIT AYARLARI (YENİ) ---
-    # Seçenekler: 'true' (her zaman), 'false' (hiçbir zaman), 'on_failure' (sadece hatalar)
+    # Seçenekler: 'true' (her zaman), 'false' (hiçbir zaman), 'on_failure' (sadece hatalar), 'on_success' (sadece başarılılar)
     RECORD_VIDEO = os.getenv("RECORD_VIDEO", "on_failure").lower()
 
     # --- SELENOID / GRID AYARLARI ---

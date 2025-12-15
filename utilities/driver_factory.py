@@ -73,7 +73,7 @@ class DriverFactory:
         
         # 'false' değilse (yani 'true' veya 'on_failure' ise) kaydı başlatmalıyız.
         # Çünkü 'on_failure' için de başta kaydetmeye başlamak zorundayız.
-        should_record = mode in ["true", "always", "on_failure"]
+        should_record = mode in ["true", "always", "on_failure", "on_success"]
 
         selenoid_options = {
             "enableVNC": True,

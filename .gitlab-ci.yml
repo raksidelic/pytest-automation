@@ -17,6 +17,7 @@ variables:
       - "true"
       - "false"
       - "on_failure"
+      - "on_success"
     description: "Video Kayıt Stratejisi"
 
 run_tests:
