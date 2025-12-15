@@ -60,15 +60,14 @@ def driver(request):
         logger.error(f"[SETUP HATA] Driver başlatılamadı: {e}")
         yield None
 
-    # 2. TEARDOWN (Test Bitişi)
+    # 2. TEARDOWN
     if driver_instance:
-        # Test başarılı mı başarısız mı kontrol et
+        # Test durumunu kontrol et
         is_failed = False
         node = request.node
         if getattr(node, 'rep_call', None) and node.rep_call.failed:
             is_failed = True
             try:
-                # Hata aldıysa screenshot al
                 allure.attach(
                     driver_instance.get_screenshot_as_png(), 
                     name="Hata_Goruntusu", 
@@ -77,10 +76,10 @@ def driver(request):
             except:
                 pass
 
-        # Driver'ı kapat (Bu noktada Selenoid videoyu diske yazar)
+        # Driver'ı kapat (Selenoid videoyu diske yazar)
         driver_instance.quit()
 
-        # --- 3. AKILLI KAYIT MANTIĞI (GÜNCELLENEN KISIM) ---
+         # --- 3. AKILLI KAYIT MANTIĞI (GÜNCELLENEN KISIM) ---
         video_name = getattr(driver_instance, 'video_name', None)
         
         if video_name:
@@ -103,7 +102,6 @@ def pytest_sessionfinish(session, exitstatus):
     TOPLU KIYIM ZAMANI 💀
     Tüm testler bittiğinde Master Node burayı çalıştırır.
     """
-    # Sadece Master Node çalıştırsın (Workerlar çalıştırmasın)
     if hasattr(session.config, 'workerinput'):
         return
 
@@ -153,11 +151,50 @@ def pytest_sessionfinish(session, exitstatus):
 
                 # Konteyner öldüğüne göre dosya artık diskte olmalı.
                 if os.path.exists(file_path):
-                    os.remove(file_path) # 🔥 API YOK, DİREKT SİLME VAR
+                    os.remove(file_path)
                     deleted_count += 1
                 else:
                     logger.warning(f"⚠️ Dosya diskte bulunamadı: {video_file}")
 
+            except Exception as inner_e:
+                logger.warning(f"Satır işlenemedi: {inner_e}")
+                
+        if os.path.exists(CLEANUP_MANIFEST):
+             os.remove(CLEANUP_MANIFEST)
+             
+        logger.info(f"✅ [CLEANUP COMPLETE] Toplam {deleted_count} adet gereksiz video disken silindi.")
+        
+    except Exception as e:
+        logger.error(f"❌ Toplu silme işleminde hata: {e}")
+    """
+    TOPLU KIYIM ZAMANI 💀
+    Tüm testler bittiğinde Master Node burayı çalıştırır.
+    """
+    # Sadece Master Node çalıştırsın (Workerlar çalıştırmasın)
+    if hasattr(session.config, 'workerinput'):
+        return
+
+    if not os.path.exists(CLEANUP_MANIFEST):
+        return
+
+    logger.info("🧹 [BATCH CLEANUP] Temizlik manifestosu okunuyor...")
+    
+    deleted_count = 0
+    try:
+        with open(CLEANUP_MANIFEST, "r") as f:
+            lines = f.readlines()
+            
+        for line in lines:
+            try:
+                data = json.loads(line.strip())
+                video_file = data.get("video")
+                
+                # Dosya yolu: /app/videos/test_x.mp4
+                file_path = os.path.join("/app/videos", video_file)
+                
+                if os.path.exists(file_path):
+                    os.remove(file_path) # 🔥 API YOK, DİREKT SİLME VAR
+                    deleted_count += 1
             except Exception as inner_e:
                 logger.warning(f"Satır işlenemedi: {inner_e}")
                 
