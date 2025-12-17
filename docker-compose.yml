@@ -10,6 +10,14 @@ services:
       - BROWSER=${BROWSER:-chrome}
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
+
+      # POSTGRES ENJEKSİYONU (Harici Servise Bağlantı)
+      # Burada şifre yazmaz, sadece .env referansı vardır.
+      - POSTGRESQL_HOST=${POSTGRESQL_HOST}
+      - POSTGRESQL_PORT=${POSTGRESQL_PORT}
+      - POSTGRESQL_DB=${POSTGRESQL_DB}
+      - POSTGRESQL_USER=${POSTGRESQL_USER}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
     volumes:
       - ./allure-results:/app/allure-results
       - ./logs:/app/logs

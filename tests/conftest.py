@@ -1,9 +1,12 @@
+# conftest.py:
+
 import pytest
 import allure
 import logging
 import uuid
 from config import Config
 from utilities.db_client import DBClient
+from utilities.sql_client import SQLClient 
 from utilities.driver_factory import DriverFactory
 from utilities.video_manager import VideoManager
 
@@ -14,6 +17,12 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 @pytest.fixture(scope="session")
 def db_client():
     client = DBClient()
+    yield client
+    client.close()
+
+@pytest.fixture(scope="session")
+def sql_client():
+    client = SQLClient()
     yield client
     client.close()
 

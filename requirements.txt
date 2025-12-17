@@ -8,3 +8,4 @@ allure-pytest
 python-arango
 pytest-xdist
 docker
+psycopg2-binary
