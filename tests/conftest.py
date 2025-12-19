@@ -17,6 +17,11 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 @pytest.fixture(scope="session")
 def db_client():
     client = DBClient()
+
+    # KORUMA KALKANI: Bağlantı yoksa testi atla (SKIP)
+    if not client.is_connected():
+        pytest.skip("⚠️ ArangoDB bağlantısı kurulamadı! NoSQL bağımlı testler atlanıyor.")
+
     yield client
     client.close()
 
