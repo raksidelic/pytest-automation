@@ -6,6 +6,15 @@ import tempfile
 from pathlib import Path
 import shutil
 
+# --- YENİ EKLENECEK KISIM (DOTENV) ---
+try:
+    from dotenv import load_dotenv
+    load_dotenv() # .env dosyasını sisteme yükler
+except ImportError:
+    print("⚠️  UYARI: 'python-dotenv' kütüphanesi yüklü değil. .env dosyası okunamayabilir.")
+    print("👉 Yüklemek için: pip install python-dotenv")
+# -------------------------------------
+
 # --- DOCKERFILE ŞABLONU ---
 DOCKERFILE_TEMPLATE = """
 FROM alpine:latest
@@ -121,9 +130,18 @@ def main():
             build_arm_native_recorder(video_image)
         
         print("   📦 ARM Browser İmajları Kontrol Ediliyor...")
-        # Check=False yaptık, internet yoksa bile hata verip durmasın, belki imaj lokalde vardır.
-        subprocess.run(["docker", "pull", "seleniarm/standalone-chromium:latest"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["docker", "pull", "seleniarm/standalone-firefox:latest"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        arm_images = [
+            "seleniarm/standalone-chromium:latest",
+            "seleniarm/standalone-firefox:latest"
+        ]
+
+        for img in arm_images:
+            if check_image_exists(img):
+                print(f"     ✅ Hazır: {img}")
+            else:
+                print(f"     📥 İndiriliyor: {img}")
+                subprocess.run(["docker", "pull", img], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     elif any(x in arch for x in ["x86_64", "amd64", "i386", "i686"]):
         print("✅ Tespit: Intel/AMD Mimarisi")
@@ -132,18 +150,35 @@ def main():
         auto_worker_count = "2"
         
         print("   📦 Intel Browser İmajları Kontrol Ediliyor...")
-        subprocess.run(["docker", "pull", "selenoid/vnc:chrome_120.0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["docker", "pull", "selenoid/vnc:firefox_120.0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["docker", "pull", video_image], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        intel_images = [
+            "selenoid/vnc:chrome_120.0",
+            "selenoid/vnc:firefox_120.0",
+            video_image # Intel için resmi recorder'ı da listeye ekledik
+        ]
+
+        for img in intel_images:
+            if check_image_exists(img):
+                print(f"     ✅ Hazır: {img}")
+            else:
+                print(f"     📥 İndiriliyor: {img}")
+                subprocess.run(["docker", "pull", img], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         print(f"❌ HATA: Mimari tanınamadı ({arch}).")
         sys.exit(1)
 
     # --- 2. ÇALIŞTIRMA ---
     final_worker_count = os.getenv("WORKER_COUNT", auto_worker_count)
+    
+    # --- YENİ EKLENEN KISIM (TEMİZLİK POLİTİKASI) ---
+    is_ci = os.getenv("CI", "false").lower() == "true"
+    default_policy = "never" if is_ci else "on_failure"
+    keep_containers_policy = os.getenv("KEEP_CONTAINERS", default_policy).lower()
+    # -------------------------------------------------
 
     if browsers_json and video_image:
         print(f"\n🚀 Test Ortamı Başlatılıyor...")
+        print(f"   ⚙️ Temizlik Politikası (KEEP_CONTAINERS): {keep_containers_policy}") # Yeni Log
         print(f"   📄 Browser Config : {browsers_json}")
         print(f"   🎥 Video Image    : {video_image}")
         
@@ -157,6 +192,8 @@ def main():
         env["VIDEO_RECORDER_IMAGE"] = video_image
         env["WORKER_COUNT"] = final_worker_count
         
+        exit_code = 1 # Varsayılan hata kodu
+
         try:
             print("🧹 Temizlik yapılıyor...")
             subprocess.run(["docker-compose", "down", "--remove-orphans"], env=env, stderr=subprocess.DEVNULL)
@@ -175,8 +212,35 @@ def main():
             print(f"❌ Hata: {e}")
             exit_code = 1
         finally:
-            print("\n🧹 Sistem kapatılıyor...")
-            subprocess.run(["docker-compose", "down", "--remove-orphans"], env=env, stderr=subprocess.DEVNULL)
+            # --- TEMİZLİK MANTIĞI ---
+            should_cleanup = True # Varsayılan
+
+            if keep_containers_policy in ["true", "always"]:
+                should_cleanup = False
+                print(f"\n🛡️  KEEP_CONTAINERS={keep_containers_policy}: Sistem açık bırakılıyor.")
+            
+            elif keep_containers_policy == "on_failure":
+                if exit_code != 0:
+                    should_cleanup = False
+                    print(f"\n⚠️  Test Başarısız (Exit: {exit_code}) ve Policy=on_failure.")
+                    print("🐛 Debugging için sistem AÇIK bırakıldı.")
+                else:
+                    print("\n✅ Testler Başarılı: Sistem temizleniyor.")
+
+            elif keep_containers_policy in ["false", "never"]:
+                should_cleanup = True
+                print(f"\n🧹 KEEP_CONTAINERS={keep_containers_policy}: Zorla temizlik yapılıyor.")
+
+            # Debug Bilgisi Göster
+            if not should_cleanup:
+                print("👉 UI Adresi: http://localhost:8080")
+                print("🧹 Temizlemek için: 'docker-compose down'")
+            
+            # Aksiyon
+            if should_cleanup:
+                print("\n🧹 Sistem temizleniyor (Teardown)...")
+                subprocess.run(["docker-compose", "down", "--remove-orphans"], env=env, stderr=subprocess.DEVNULL)
+            
             sys.exit(exit_code)
 
 if __name__ == "__main__":
