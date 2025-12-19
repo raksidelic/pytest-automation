@@ -1,3 +1,5 @@
+# utilities/sql_client.py:
+
 import psycopg2
 import logging
 from config import Config
@@ -30,6 +32,23 @@ class SQLClient:
         except Exception as e:
             self.logger.error(f"❌ SQL Bağlantı Hatası: {e}")
             self.connection = None
+
+    def is_connected(self):
+        """
+        Veritabanı bağlantısının canlı olup olmadığını kontrol eder.
+        """
+        self.connect() # Bağlanmayı dene
+        
+        if self.connection is None:
+            return False
+
+        try:
+            # En basit sorgu ile bağlantıyı test et (Ping)
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            return True
+        except Exception:
+            return False
 
     def execute_query(self, query, params=None):
         self.connect()

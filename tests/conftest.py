@@ -23,6 +23,11 @@ def db_client():
 @pytest.fixture(scope="session")
 def sql_client():
     client = SQLClient()
+    
+    # KORUMA KALKANI: Bağlantı yoksa testi atla (SKIP)
+    if not client.is_connected():
+        pytest.skip("⚠️ PostgreSQL bağlantısı kurulamadı! SQL bağımlı testler atlanıyor.")
+        
     yield client
     client.close()
 
