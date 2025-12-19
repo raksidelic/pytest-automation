@@ -15,7 +15,7 @@ def main():
     if any(x in arch for x in ["arm", "aarch64"]):
         print("✅ Tespit: ARM Mimarisi")
         browsers_json = "browsers_arm.json"
-        auto_worker_count = "8" # M3 varsayılanı
+        auto_worker_count = "6" # M3 varsayılanı
         
         # İmaj hazırlığı...
         subprocess.run(["docker", "pull", "seleniarm/standalone-chromium:latest"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

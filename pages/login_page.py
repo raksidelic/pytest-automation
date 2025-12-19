@@ -7,9 +7,9 @@ from config import Config
 
 class LoginPage(BasePage):
     # Locators
-    USERNAME_INPUT = (By.ID, "user-name")
-    PASSWORD_INPUT = (By.ID, "password")
-    LOGIN_BTN = (By.ID, "login-button")
+    USERNAME_INPUT = (By.CSS_SELECTOR, "#user-name")
+    PASSWORD_INPUT = (By.CSS_SELECTOR, "#password")
+    LOGIN_BTN   = (By.CSS_SELECTOR, "#login-button")
     ERROR_MSG = (By.CSS_SELECTOR, "[data-test='error']")
 
     # Actions

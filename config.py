@@ -8,13 +8,22 @@ class Config:
     ENV = os.getenv("ENV", "STAGE").upper()
     BASE_URL = os.getenv("BASE_URL", "https://www.saucedemo.com")
     TIMEOUT = int(os.getenv("TIMEOUT", 10))
+
+    # --- PLATFORM SEÇİMİ (YENİ EKLENDİ) ---
+    # 'web' (varsayılan), 'android', 'ios'
+    PLATFORM_NAME = os.getenv("PLATFORM_NAME", "web").lower()
     
-    # --- TEST KOŞUM AYARLARI ---
+    # --- WEB TEST KOŞUM AYARLARI ---
     BROWSER = os.getenv("BROWSER", "chrome").lower()
     HEADLESS = os.getenv("HEADLESS", "false").lower() == "true"
-    RECORD_VIDEO = os.getenv("RECORD_VIDEO", "on_failure").lower()
+
+    # --- MOBİL AYARLARI ---
+    MOBILE_APP_PATH = os.getenv("MOBILE_APP_PATH")
+    MOBILE_DEVICE_NAME = os.getenv("MOBILE_DEVICE_NAME", "Android Emulator")
+    MOBILE_REMOTE_URL = os.getenv("MOBILE_REMOTE_URL") # Appium/Selenoid URL
 
     # --- SELENOID / GRID AYARLARI ---
+    RECORD_VIDEO = os.getenv("RECORD_VIDEO", "on_failure").lower()
     SELENIUM_REMOTE_URL = os.getenv("SELENIUM_REMOTE_URL")
     
     # --- DATABASE: NOSQL (ARANGO) ---

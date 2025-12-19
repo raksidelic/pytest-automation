@@ -9,3 +9,4 @@ python-arango
 pytest-xdist
 docker
 psycopg2-binary
+Appium-Python-Client
