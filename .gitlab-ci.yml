@@ -53,6 +53,8 @@ run_tests:
     # 4. KLASÖR İZİNLERİ
     - mkdir -p videos allure-results logs
     - chmod -R 777 videos allure-results logs
+
+    - docker rm -f selenoid selenoid-ui pytest-test-runner || true
     
     # 5. AKILLI BAŞLATMA 🚀
     - python3 start_tests.py
