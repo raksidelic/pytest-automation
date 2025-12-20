@@ -41,6 +41,8 @@ run_tests:
     - echo "AI_PROVIDER=$AI_PROVIDER" >> .env
     - echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env
     - echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
+    - echo "GEMINI_MODEL=$GEMINI_MODEL" >> .env
+    - echo "OPENAI_MODEL=$OPENAI_MODEL" >> .env
     
     # Dropdown'dan seçilen değeri .env'ye yazıyoruz
     - echo "RECORD_VIDEO=$RECORD_VIDEO" >> .env
