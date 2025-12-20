@@ -29,6 +29,7 @@ run_tests:
   script:
     # 1. BAĞIMLILIKLARI YÜKLE
     - apk add --no-cache python3 py3-pip docker-compose
+    - pip3 install python-dotenv --break-system-packages || pip3 install python-dotenv
 
     # 2. ORTAM (.env) DOSYASINI HAZIRLA
     - echo "ARANGO_URL=http://arangoDB:8529" > .env
