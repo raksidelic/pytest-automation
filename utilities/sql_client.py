@@ -1,4 +1,4 @@
-# utilities/sql_client.py:
+# utilities/sql_client.py:
 
 import psycopg2
 import logging
@@ -12,38 +12,38 @@ class SQLClient:
         self.config = Config()
 
     def connect(self):
-        """Lazy Connection: İhtiyaç duyulduğunda bağlan."""
+        """Lazy Connection: Connect when needed."""
         if self.connection:
             return
 
         dsn = self.config.POSTGRES_DSN
         if not dsn:
-            # .env boşsa buraya düşer
-            self.logger.warning("⚠️ PostgreSQL ayarları eksik. Test DB bağlantısı olmadan devam edecek.")
+            # Falls here if .env is empty
+            self.logger.warning("⚠️ PostgreSQL settings missing. Continuing without Test DB connection.")
             return
 
         try:
-            # Güvenlik: Şifreyi loga basmıyoruz
-            self.logger.info(f"SQL Bağlantısı deneniyor: {self.config._PG_HOST}:{self.config._PG_PORT}")
+            # Security: Do not log the password
+            self.logger.info(f"Attempting SQL Connection: {self.config._PG_HOST}:{self.config._PG_PORT}")
             
             self.connection = psycopg2.connect(dsn)
             self.cursor = self.connection.cursor()
-            self.logger.info("✅ PostgreSQL Bağlantısı Başarılı.")
+            self.logger.info("✅ PostgreSQL Connection Successful.")
         except Exception as e:
-            self.logger.error(f"❌ SQL Bağlantı Hatası: {e}")
+            self.logger.error(f"❌ SQL Connection Error: {e}")
             self.connection = None
 
     def is_connected(self):
         """
-        Veritabanı bağlantısının canlı olup olmadığını kontrol eder.
+        Checks if the database connection is alive.
         """
-        self.connect() # Bağlanmayı dene
+        self.connect() # Try connecting
         
         if self.connection is None:
             return False
 
         try:
-            # En basit sorgu ile bağlantıyı test et (Ping)
+            # Test connection with the simplest query (Ping)
             with self.connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
             return True
@@ -64,7 +64,7 @@ class SQLClient:
             else:
                 return self.cursor.rowcount
         except Exception as e:
-            self.logger.error(f"Sorgu Hatası: {e}")
+            self.logger.error(f"Query Error: {e}")
             self.connection.rollback()
             return None
 
@@ -73,4 +73,4 @@ class SQLClient:
             self.cursor.close()
         if self.connection:
             self.connection.close()
-            self.logger.info("SQL bağlantısı kapatıldı.")
+            self.logger.info("SQL connection closed.")

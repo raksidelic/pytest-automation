@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 import shutil
 
-# --- NEW SECTION (DOTENV) ---
+# --- DOTENV ---
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -170,7 +170,7 @@ def main():
     # --- 2. EXECUTION ---
     final_worker_count = os.getenv("WORKER_COUNT", auto_worker_count)
     
-    # --- NEW ADDITION (CLEANUP POLICY) ---
+    # --- CLEANUP POLICY ---
     is_ci = os.getenv("CI", "false").lower() == "true"
     default_policy = "never" if is_ci else "on_failure"
     keep_containers_policy = os.getenv("KEEP_CONTAINERS", default_policy).lower()

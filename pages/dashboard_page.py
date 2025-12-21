@@ -9,7 +9,7 @@ class DashboardPage(BasePage):
     TITLE = (By.CLASS_NAME, "title")
 
     def is_inventory_displayed(self):
-        """Ürün listesi görünüyor mu?"""
+        """Is the product list displayed?"""
         return self.find(self.INVENTORY_LIST).is_displayed()
 
     def get_page_title(self):

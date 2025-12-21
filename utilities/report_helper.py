@@ -4,23 +4,23 @@ class ReportHelper:
     @staticmethod
     def convert_to_html(markdown_text, model_name):
         """
-        Markdown metni alır, şık bir HTML şablonuna giydirir.
+        Takes Markdown text and wraps it in a stylish HTML template.
         """
-        # 1. Markdown -> Saf HTML Dönüşümü
+        # 1. Markdown -> Pure HTML Conversion
         raw_html = markdown.markdown(
             markdown_text,
             extensions=['fenced_code', 'nl2br', 'sane_lists']
         )
 
-        # 2. HTML Şablonu (CSS + Yapı)
-        # Bu kısım logic'ten izole edildiği için istediğin kadar süsleyebilirsin.
+        # 2. HTML Template (CSS + Structure)
+        # This part is isolated from logic, so you can style it as you wish.
         template = f"""
         <style>
             .ai-report-box {{
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 background-color: #f8f9fa;
                 border: 1px solid #e9ecef;
-                border-left: 5px solid #dc3545; /* Hata Kırmızısı */
+                border-left: 5px solid #dc3545; /* Error Red */
                 border-radius: 6px;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.05);
                 margin: 10px 0;
@@ -55,7 +55,7 @@ class ReportHelper:
                 line-height: 1.6;
                 font-size: 14px;
             }}
-            /* Kod Blokları */
+            /* Code Blocks */
             pre {{
                 background: #2b2b2b;
                 color: #f8f8f2;
@@ -83,7 +83,7 @@ class ReportHelper:
         <div class="ai-report-box">
             <div class="ai-header">
                 <span style="font-size: 20px;">🤖</span>
-                <h3 class="ai-title">Yapay Zeka Hata Analizi</h3>
+                <h3 class="ai-title">Artificial Intelligence Error Analysis</h3>
                 <span class="ai-badge">{model_name}</span>
             </div>
             <div class="ai-content">

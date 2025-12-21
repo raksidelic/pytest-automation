@@ -9,11 +9,11 @@ from config import Config
 
 class VideoManager:
     """
-    [MİMARİ: Event-Based Destruction Wait]
-    1. Time/Sleep YOK.
-    2. API/Request YOK.
-    3. Process Exit yerine Docker 'destroy' event'i beklenir.
-    Bu, Selenoid'in temizliği bitirmeden kodun ilerlemesini %100 engeller.
+    [ARCHITECTURE: Event-Based Destruction Wait]
+    1. No Time/Sleep.
+    2. No API/Request polling.
+    3. Waits for Docker 'destroy' event instead of just Process Exit.
+    This guarantees that code execution is blocked 100% until Selenoid cleanup is complete.
     """
     
     ALLURE_RESULTS_DIR = "/app/allure-results"
@@ -23,7 +23,7 @@ class VideoManager:
     @staticmethod
     def get_container_id_by_uuid(execution_id):
         """
-        'execution_id' etiketine sahip konteyneri bulur.
+        Finds the container associated with the 'execution_id' label.
         """
         try:
             client = docker.from_env()
@@ -31,7 +31,7 @@ class VideoManager:
             if containers:
                 return containers[0].id
         except Exception as e:
-            VideoManager.logger.warning(f"Docker Label Sorgu Hatası: {e}")
+            VideoManager.logger.warning(f"Docker Label Query Error: {e}")
         return None
 
     @staticmethod
@@ -50,7 +50,7 @@ class VideoManager:
                 f.write(json.dumps(entry) + "\n")
                 fcntl.flock(f, fcntl.LOCK_UN)
         except Exception as e:
-            VideoManager.logger.error(f"Manifest hatası: {e}")
+            VideoManager.logger.error(f"Manifest Error: {e}")
 
     @staticmethod
     def _match_json_to_test(json_data, target_node_id):
@@ -68,7 +68,7 @@ class VideoManager:
                 with open(json_file, "r+") as f:
                     data = json.load(f)
                     if VideoManager._match_json_to_test(data, node_id):
-                        video_att = {"name": "Test Videosu", "source": video_filename, "type": "video/mp4"}
+                        video_att = {"name": "Test Video", "source": video_filename, "type": "video/mp4"}
                         target_step = data.get("afters", [])[-1] if data.get("afters") else data
                         if "attachments" not in target_step: target_step["attachments"] = []
                         if not any(a['source'] == video_filename for a in target_step.get("attachments", [])):
@@ -81,50 +81,50 @@ class VideoManager:
     @staticmethod
     def _block_until_container_removed(container_id):
         """
-        [ENDÜSTRİYEL STANDART]
-        Sadece 'Process Exit' beklemez.
-        Docker Daemon'dan 'destroy' (tamamen silinme) sinyali gelene kadar kodu kilitler.
-        Bu sayede Selenoid 'REMOVED' demeden Python asla 'Bitti' demez.
+        [INDUSTRIAL STANDARD]
+        Does not wait for 'Process Exit' only.
+        Locks code execution until 'destroy' (full removal) signal is received from Docker Daemon.
+        This ensures Python never says 'Done' before Selenoid says 'REMOVED'.
         """
         if not container_id: return
         client = docker.from_env()
         
         try:
-            # 1. Konteyner hala var mı kontrol et
+            # 1. Check if container still exists
             try:
                 container = client.containers.get(container_id)
             except NotFound:
-                # Zaten silinmişse beklemeye gerek yok
-                VideoManager.logger.info(f"✅ Konteyner zaten yok: {container_id[:12]}")
+                # If already deleted, no need to wait
+                VideoManager.logger.info(f"✅ Container already gone: {container_id[:12]}")
                 return
 
-            VideoManager.logger.info(f"⏳ Tam Silinme Bekleniyor (Event Listener): {container_id[:12]}")
+            VideoManager.logger.info(f"⏳ Awaiting Full Deletion (Event Listener): {container_id[:12]}")
 
-            # 2. Önce Exit olmasını bekle (Garanti olsun)
+            # 2. First wait for Exit (Just to be safe)
             container.wait() 
 
-            # 3. ŞİMDİ ASIL OLAY: 'destroy' sinyalini dinle
-            # Bu işlem CPU harcamaz, network socket üzerinden push notification bekler.
+            # 3. THE MAIN EVENT: Listen for 'destroy' signal
+            # This process consumes no CPU, waits for push notification over network socket.
             event_stream = client.events(
                 filters={'container': container_id, 'event': 'destroy'}, 
                 decode=True
             )
             
-            # Bu döngü, Docker "Ben sildim" diyene kadar dönmez, orada bekler.
+            # This loop won't spin; it waits right there until Docker says "I deleted it".
             for _ in event_stream:
-                VideoManager.logger.info(f"💣 Destroy Sinyali Alındı: {container_id[:12]}")
-                break # Olay geldi, kilit açıldı.
+                VideoManager.logger.info(f"💣 Destroy Signal Received: {container_id[:12]}")
+                break # Event received, lock released.
 
         except NotFound:
-            pass # Race condition: Biz dinlemeye başlayana kadar silindi.
+            pass # Race condition: Deleted before we started listening.
         except Exception as e:
-            VideoManager.logger.warning(f"Event Wait Hatası: {e}")
+            VideoManager.logger.warning(f"Event Wait Error: {e}")
 
     @staticmethod
     def post_process_cleanup():
         if not os.path.exists(VideoManager.CLEANUP_MANIFEST): return
 
-        VideoManager.logger.info("🧹 [POST-PROCESS] Başlatılıyor...")
+        VideoManager.logger.info("🧹 [POST-PROCESS] Starting...")
         manifest_entries = []
         try:
             with open(VideoManager.CLEANUP_MANIFEST, "r") as f:
@@ -133,12 +133,12 @@ class VideoManager:
                     except: pass
         except: pass
 
-        # 1. Bekleme Aşaması (Destroy Event)
+        # 1. Waiting Phase (Destroy Event)
         unique_containers = {e.get("container_id") for e in manifest_entries if e.get("container_id")}
         for c_id in unique_containers:
             VideoManager._block_until_container_removed(c_id)
 
-        # 2. İşlem Aşaması
+        # 2. Processing Phase
         processed = 0
         deleted = 0
         for entry in manifest_entries:
@@ -152,4 +152,4 @@ class VideoManager:
                     except: pass
 
         if os.path.exists(VideoManager.CLEANUP_MANIFEST): os.remove(VideoManager.CLEANUP_MANIFEST)
-        VideoManager.logger.info(f"✅ Bitti. Rapora Eklendi: {processed} | Silindi: {deleted}")
+        VideoManager.logger.info(f"✅ Done. Added to Report: {processed} | Deleted: {deleted}")

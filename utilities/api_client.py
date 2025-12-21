@@ -36,10 +36,10 @@ class APIClient:
 
     def _log_and_attach(self, url, method, response, payload=None):
         """
-        Karate benzeri detaylı loglama ve Allure raporlama
+        Karate-like detailed logging and Allure reporting
         """
-        # 1. REQUEST DETAYLARI (HEADERS DAHİL)
-        # requests kütüphanesi giden headerları response.request.headers içinde tutar
+        # 1. REQUEST DETAILS (INCLUDING HEADERS)
+        # requests library stores sent headers in response.request.headers
         req_headers = dict(response.request.headers)
         
         req_details = f"URL: {url}\nMethod: {method}\n"
@@ -48,22 +48,22 @@ class APIClient:
         if payload:
             req_details += f"\n\n--- REQUEST BODY ---\n{json.dumps(payload, indent=4, ensure_ascii=False)}"
 
-        # Allure'a Request Ekle
+        # Add Request to Allure
         allure.attach(
             req_details, 
             name=f"Request ({method})", 
             attachment_type=AttachmentType.TEXT
         )
 
-        # 2. RESPONSE DETAYLARI (TIMING & HEADERS DAHİL)
+        # 2. RESPONSE DETAILS (INCLUDING TIMING & HEADERS)
         res_headers = dict(response.headers)
-        latency = response.elapsed.total_seconds() * 1000 # ms cinsinden
+        latency = response.elapsed.total_seconds() * 1000 # in ms
         
         res_details = f"Status Code: {response.status_code}\n"
         res_details += f"Time: {latency:.0f}ms\n"
         res_details += f"\n--- RESPONSE HEADERS ---\n{json.dumps(res_headers, indent=4)}"
         
-        # Body'yi formatla
+        # Format Body
         try:
             res_body_str = json.dumps(response.json(), indent=4, ensure_ascii=False)
             attach_type = AttachmentType.JSON
@@ -73,12 +73,12 @@ class APIClient:
 
         res_details += f"\n\n--- RESPONSE BODY ---\n{res_body_str}"
 
-        # Allure'a Response Ekle
+        # Add Response to Allure
         allure.attach(
             res_details, 
             name=f"Response ({response.status_code}) - {latency:.0f}ms", 
             attachment_type=attach_type
         )
         
-        # Konsol Loglarına da kısa özet geç
+        # Log short summary to console
         self.logger.info(f"Response: {response.status_code} ({latency:.0f}ms)")
