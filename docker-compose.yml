@@ -32,7 +32,12 @@ services:
       selenoid:
         condition: service_started
     # Paralel koşum ayarı
-    command: ["pytest", "-n", "${WORKER_COUNT:-2}", "--alluredir=allure-results", "--clean-alluredir"]
+    # Paralel koşum ayarı (Shell formatına çevrildi ve TARGET_TESTS eklendi)
+    command: >
+      sh -c "pytest -n ${WORKER_COUNT:-2} 
+      --alluredir=allure-results 
+      --clean-alluredir 
+      ${TARGET_TESTS}"
     networks:
       - shared-network
 
