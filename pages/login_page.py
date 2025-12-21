@@ -14,21 +14,21 @@ class LoginPage(BasePage):
 
     # Actions
     def load(self):
-        with allure.step(f"{Config.BASE_URL} adresine gidiliyor"):
-            self.logger.info(f"SAYFA YÜKLENİYOR: {Config.BASE_URL}") # <--- LOG EKLENDİ
+        with allure.step(f"Navigating to {Config.BASE_URL}"):
+            self.logger.info(f"PAGE LOADING: {Config.BASE_URL}")
             self.driver.get(Config.BASE_URL)
-            self.take_screenshot("Sayfa Yüklendi")
+            self.take_screenshot("Page Loaded")
 
-    @allure.step("Login işlemi yapılıyor")
+    @allure.step("Performing login operation")
     def login(self, username, password):
-        # send_text ve click metodları BasePage içindeki logger'ı 
-        # tetikleyeceği için burada ekstra log yazmaya gerek yok.
+        # Since send_text and click methods trigger the logger inside BasePage,
+        # there is no need to write extra logs here.
         self.send_text(self.USERNAME_INPUT, username)
         self.send_text(self.PASSWORD_INPUT, password)
         self.click(self.LOGIN_BTN)
 
     def get_error_message(self):
         text = self.find(self.ERROR_MSG).text
-        self.take_screenshot(f"Hata Mesajı Görüldü: {text}")
-        self.logger.info(f"HATA MESAJI OKUNDU: {text}") # <--- LOG EKLENDİ
+        self.take_screenshot(f"Error Message Seen: {text}")
+        self.logger.info(f"ERROR MESSAGE READ: {text}")
         return text

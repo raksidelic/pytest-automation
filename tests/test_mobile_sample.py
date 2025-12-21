@@ -4,38 +4,36 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-@allure.story("Finom Mobil Web Uyumluluk Testleri")
+@allure.story("Finom Mobile Web Compatibility Tests")
 class TestFinomMobile:
 
-    @allure.title("Finom.co Mobil Anasayfa Kontrolü")
+    @allure.title("Finom.co Mobile Homepage Check")
     def test_finom_homepage_mobile(self, driver):
         
-        # 1. Finom'a git
+        # 1. Go to Finom
         base_url = "https://finom.co"
-        with allure.step(f"{base_url} adresine gidiliyor"):
+        with allure.step(f"Navigating to {base_url}"):
             driver.get(base_url)
         
-        # 2. Title Kontrolü (Sayfanın yüklendiğini teyit eder)
-        with allure.step("Sayfa başlığı kontrol ediliyor"):
-            print(f"📄 Sayfa Başlığı: {driver.title}")
-            assert "Finom" in driver.title, "Sayfa başlığında 'Finom' bulunamadı!"
+        # 2. Title Check (Confirms page load)
+        with allure.step("Checking page title"):
+            print(f"📄 Page Title: {driver.title}")
+            assert "Finom" in driver.title, "'Finom' not found in page title!"
 
-        # 3. Mobil Web'e Özgü Element Kontrolü
-        # Mobilde genelde 'Open Account' butonu veya Hamburger menü görünür olur.
-        # Burada sayfanın görünür bir elementini bekliyoruz.
-        with allure.step("Mobil arayüz elementleri kontrol ediliyor"):
+        # 3. Mobile Web Specific Element Check
+        # On mobile, usually 'Open Account' button or Hamburger menu is visible.
+        # Here we wait for a visible element on the page.
+        with allure.step("Checking mobile interface elements"):
             wait = WebDriverWait(driver, 20)
             
-            # Not: Finom'un sitesi değişebilir, genel body kontrolü en güvenlisidir.
-            # Veya spesifik bir buton (Örn: "Get started" veya "Open account")
-            # Burada sayfanın 'body'sinin yüklendiğine bakıyoruz.
+            # Here we are checking if the page 'body' is loaded.
             body = wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-            assert body.is_displayed(), "Sayfa gövdesi görüntülenemedi!"
+            assert body.is_displayed(), "Page body could not be displayed!"
             
-            # Ekran görüntüsü al (Allure raporuna eklemek için)
+            # Take screenshot (To add to Allure report)
             allure.attach(
                 driver.get_screenshot_as_png(), 
                 name="Finom_Mobile_Home", 
                 attachment_type=allure.attachment_type.PNG
             )
-            print("✅ Finom Mobil Anasayfa Başarıyla Yüklendi.")
+            print("✅ Finom Mobile Homepage Loaded Successfully.")

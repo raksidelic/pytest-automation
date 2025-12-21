@@ -4,38 +4,38 @@ import pytest
 import allure
 from utilities.api_client import APIClient
 
-# Reqres yerine daha stabil olan JSONPlaceholder kullanıyoruz
+# Using JSONPlaceholder instead of Reqres as it is more stable
 API_BASE_URL = "https://jsonplaceholder.typicode.com"
 
-@allure.feature("API Test Senaryoları")
+@allure.feature("API Test Scenarios")
 class TestAPI:
 
     def setup_method(self):
-        # Her testten önce Client'ı başlat
+        # Initialize Client before each test
         self.client = APIClient(API_BASE_URL)
 
-    @allure.story("Kullanıcı Listesi Çekme (GET)")
+    @allure.story("Fetch User List (GET)")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_get_users(self):
-        with allure.step("GET /users isteği atılıyor"):
+        with allure.step("Sending GET /users request"):
             response = self.client.get("/users")
         
-        with allure.step("Status Code ve Data Kontrolü"):
+        with allure.step("Status Code and Data Verification"):
             assert response.status_code == 200
             data = response.json()
             
-            # JSONPlaceholder direkt liste döner, 'data' objesi içinde değil
-            assert isinstance(data, list), "API bir liste dönmedi!"
-            assert len(data) > 0, "Kullanıcı listesi boş!"
+            # JSONPlaceholder returns a list directly, not inside a 'data' object
+            assert isinstance(data, list), "API did not return a list!"
+            assert len(data) > 0, "User list is empty!"
             
-            # İlk kullanıcının email kontrolü
+            # Email check for the first user
             assert "@" in data[0]["email"]
-            print(f"\n[API SUCCESS] Kullanıcı çekildi: {data[0]['name']}")
+            print(f"\n[API SUCCESS] User fetched: {data[0]['name']}")
 
-    @allure.story("Yeni Post Oluşturma (POST)")
+    @allure.story("Create New Post (POST)")
     @pytest.mark.parametrize("title, body, userId", [
         ("Company Test", "QA Lead Task", 1),
-        ("Python Otomasyon", "API Testing", 1)
+        ("Python Automation", "API Testing", 1)
     ])
     def test_create_post(self, title, body, userId):
         payload = {
@@ -44,18 +44,18 @@ class TestAPI:
             "userId": userId
         }
         
-        with allure.step(f"POST /posts isteği (Title: {title})"):
-            # JSONPlaceholder'da POST için /posts endpoint'i kullanılır
+        with allure.step(f"Sending POST /posts request (Title: {title})"):
+            # JSONPlaceholder uses /posts endpoint for POST
             response = self.client.post("/posts", payload)
         
-        with allure.step("Oluşturulan verinin doğrulanması"):
-            # Başarılı oluşturma kodu 201'dir
+        with allure.step("Verifying created data"):
+            # Successful creation code is 201
             assert response.status_code == 201
             json_response = response.json()
             
-            # Gönderdiğimiz verinin aynısı döndü mü?
+            # Did the same data we sent return?
             assert json_response["title"] == title
             assert json_response["body"] == body
             assert json_response["userId"] == userId
             assert "id" in json_response
-            print(f"\n[API SUCCESS] Post oluşturuldu ID: {json_response['id']}")
+            print(f"\n[API SUCCESS] Post created ID: {json_response['id']}")
