@@ -193,10 +193,17 @@ def main():
         env["WORKER_COUNT"] = final_worker_count
         
         exit_code = 1 # Varsayılan hata kodu
+        user_aborted = False # Kullanıcı kesintisi takibi için
 
         try:
             print("🧹 Temizlik yapılıyor...")
+            # 1. Altyapı Temizliği (Compose)
             subprocess.run(["docker-compose", "down", "--remove-orphans"], env=env, stderr=subprocess.DEVNULL)
+            
+            # 2. İşçi Temizliği (Workers - Agresif)
+            # Eski oturumlardan kalan tarayıcı/video artıklarını siler.
+            force_clean_cmd = "docker ps -a --format '{{.ID}} {{.Image}}' | grep -E 'selenoid|seleniarm' | grep -v 'aerokube' | awk '{print $1}' | xargs docker rm -f 2>/dev/null"
+            subprocess.run(force_clean_cmd, shell=True)
             
             print("🎬 Konteynerler Ayağa Kaldırılıyor...")
             result = subprocess.run(
@@ -205,9 +212,15 @@ def main():
             )
             exit_code = result.returncode
 
+            if exit_code == 130:
+                print("\n🛑 Kullanıcı tarafından durduruldu (Exit 130).")
+                exit_code = 0
+                user_aborted = True
+
         except KeyboardInterrupt:
             print("\n🛑 Kullanıcı tarafından durduruldu.")
             exit_code = 0
+            user_aborted = True
         except Exception as e:
             print(f"❌ Hata: {e}")
             exit_code = 1
@@ -220,7 +233,7 @@ def main():
                 print(f"\n🛡️  KEEP_CONTAINERS={keep_containers_policy}: Sistem açık bırakılıyor.")
             
             elif keep_containers_policy == "on_failure":
-                if exit_code != 0:
+                if exit_code != 0 and not user_aborted: # Hata varsa VE kullanıcı durdurmadıysa
                     should_cleanup = False
                     print(f"\n⚠️  Test Başarısız (Exit: {exit_code}) ve Policy=on_failure.")
                     print("🐛 Debugging için sistem AÇIK bırakıldı.")
@@ -236,11 +249,22 @@ def main():
                 print("👉 UI Adresi: http://localhost:8080")
                 print("🧹 Temizlemek için: 'docker-compose down'")
             
-            # Aksiyon
+            # Aksiyon 1: Altyapı Temizliği
             if should_cleanup:
                 print("\n🧹 Sistem temizleniyor (Teardown)...")
                 subprocess.run(["docker-compose", "down", "--remove-orphans"], env=env, stderr=subprocess.DEVNULL)
             
+            # Aksiyon 2: İşçi Temizliği (HER ZAMAN)
+            # Policy ne olursa olsun, tarayıcı ve recorder'lar işi bitince veya abort durumunda silinmelidir.
+            # 'aerokube' filtresi sayesinde Selenoid Hub ve UI korunur.
+            print("🚿 İşçi sınıfı (Workers) temizleniyor...")
+            try:
+                force_clean_cmd = "docker ps -a --format '{{.ID}} {{.Image}}' | grep -E 'selenoid|seleniarm' | grep -v 'aerokube' | awk '{print $1}' | xargs docker rm -f 2>/dev/null"
+                subprocess.run(force_clean_cmd, shell=True)
+                print("✨ Temizlik tamamlandı.")
+            except Exception:
+                pass
+
             sys.exit(exit_code)
 
 if __name__ == "__main__":
