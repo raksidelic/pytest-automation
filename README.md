@@ -1,10 +1,5 @@
 # 🚀 Finom.co - Next-Gen QA Automation Framework
 
-![Python]
-![Pytest]
-![Selenium]
-![Docker]
-![AI Powered]
 
 ## 📋 Executive Summary
 
