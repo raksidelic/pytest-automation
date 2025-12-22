@@ -124,7 +124,7 @@ def main():
         print("✅ Detection: ARM Architecture (Apple Silicon)")
         browsers_json = "browsers_arm.json"
         video_image = "selenoid/video-recorder:arm-native"
-        auto_worker_count = "6"
+        auto_worker_count = "4"
         
         if not check_image_exists(video_image):
             build_arm_native_recorder(video_image)
