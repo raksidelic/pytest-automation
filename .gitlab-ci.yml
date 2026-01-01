@@ -1,4 +1,5 @@
 stages:
+  - quality_check
   - test
   - report
 
@@ -10,7 +11,6 @@ variables:
   TAKE_SCREENSHOT: "true"
 
   # --- VİDEO KAYIT AYARLARI (Dropdown Menü) ---
-  # 'spec' yerine standart variables 'options' kullanıyoruz.
   RECORD_VIDEO:
     value: "on_failure"  # Varsayılan değer
     options:
@@ -20,6 +20,36 @@ variables:
       - "on_success"
     description: "Video Kayıt Stratejisi"
 
+# --- 1. AŞAMA: KALİTE VE GÜVENLİK KONTROLÜ (SHIFT LEFT) ---
+static_analysis:
+  stage: quality_check
+  image: python:3.13.11-slim
+  tags:
+    - mac-m3-runner
+  script:
+    - echo "🚀 Installing Quality Gates (Ruff & Bandit)..."
+    - pip install ruff bandit
+
+    # 1. RUFF: Modern Linter (Kod Stili ve Hata Kontrolü)
+    - echo "🔎 Running Ruff (Linter & Formatter Check)..."
+    # GitLab Code Quality raporu oluşturur (Dashboard'da görünür)
+    - ruff check . --output-format=gitlab > gl-code-quality-report.json || true 
+    # Hataları konsola da basar
+    - ruff check .
+    
+    # 2. BANDIT: Güvenlik Taraması (Security Scan)
+    - echo "🛡️ Running Bandit (Security Scan)..."
+    # -r: recursive (tüm dosyalar), -ll: level low (tüm riskleri gör), -ii: confidence high
+    - bandit -r . -ll -ii
+
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+    when: always
+  # Bu aşama başarısız olursa diğerleri çalışmasın (Quality Gate)
+  allow_failure: false 
+
+# --- 2. AŞAMA: TEST KOŞUMU ---
 run_tests:
   stage: test
   image: docker:29.1.2
@@ -73,6 +103,7 @@ run_tests:
       - logs/
     expire_in: 3 days
 
+# --- 3. AŞAMA: RAPORLAMA ---
 generate_report:
   stage: report
   image: frankescobar/allure-docker-service

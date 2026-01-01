@@ -15,3 +15,5 @@ eyes-selenium
 google-genai
 markdown
 openai
+ruff
+bandit
