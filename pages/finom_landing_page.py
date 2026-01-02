@@ -21,8 +21,8 @@ class FinomLandingPage(BasePage):
     @allure.step("Handle cookie pop-up")
     def handle_cookies(self):
         try:
-            # Click if cookie button appears, otherwise continue after 3 seconds (prevent test failure)
-            WebDriverWait(self.driver, 3).until(
+            # Click if cookie button appears, otherwise continue after 10 seconds (prevent test failure)
+            WebDriverWait(self.driver, 10).until(
                 EC.visibility_of_element_located(FinomLandingLocators.COOKIE_ACCEPT_BUTTON)
             ).click()
             time.sleep(0.5)
