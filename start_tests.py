@@ -187,8 +187,10 @@ def main():
                 print(f"     ✅ Ready: {img}")
             else:
                 print(f"     📥 Downloading: {img}")
-                try: client.images.pull(img)
-                except: pass
+                try:
+                    client.images.pull(img)
+                except Exception:
+                    pass
 
     elif any(x in arch for x in ["x86_64", "amd64", "i386", "i686"]):
         print("✅ Detection: Intel/AMD Architecture")
@@ -209,8 +211,10 @@ def main():
                 print(f"     ✅ Ready: {img}")
             else:
                 print(f"     📥 Downloading: {img}")
-                try: client.images.pull(img)
-                except: pass
+                try:
+                    client.images.pull(img)
+                except Exception:
+                    pass
     else:
         print(f"❌ ERROR: Architecture not recognized ({arch}).")
         sys.exit(1)
