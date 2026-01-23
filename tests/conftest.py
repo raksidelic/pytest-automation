@@ -3,8 +3,8 @@ import allure
 import logging
 import uuid
 from config import Config
-from utilities.db_client import DBClient
-from utilities.sql_client import SQLClient 
+from utilities.arangoDB_client import DBClient
+from utilities.postgreDB_client import SQLClient 
 from utilities.driver_factory import DriverFactory
 from utilities.video_manager import VideoManager
 from utilities.ai_debugger import AIDebugger

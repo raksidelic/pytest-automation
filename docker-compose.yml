@@ -1,6 +1,6 @@
 version: '3'
 services:
-  # 1. TEST KOŞUCUSU (Otomatik Mimari: Python resmi imajı multi-arch'tır)
+  # 1. TEST RUNNER
   pytest-tests:
     build: .
     container_name: pytest-test-runner
@@ -11,7 +11,7 @@ services:
       - DOCKER_ENV=true 
       - BASE_URL=https://www.saucedemo.com
 
-      # POSTGRES ENJEKSİYONU
+      # POSTGRES INJECTION
       - POSTGRESQL_HOST=${POSTGRESQL_HOST}
       - POSTGRESQL_PORT=${POSTGRESQL_PORT}
       - POSTGRESQL_DB=${POSTGRESQL_DB}
@@ -31,8 +31,7 @@ services:
     depends_on:
       selenoid:
         condition: service_started
-    # Paralel koşum ayarı
-    # Paralel koşum ayarı (Shell formatına çevrildi ve TARGET_TESTS eklendi)
+    # Parallel execution configuration
     command: >
       sh -c "pytest -n ${WORKER_COUNT:-2} 
       --alluredir=allure-results 
@@ -41,7 +40,7 @@ services:
     networks:
       - shared-network
 
-  # 2. SELENOID (Otomatik Mimari: Aerokube resmi imajı multi-arch'tır)
+  # 2. SELENOID (Automatic architecture: official Aerokube image is multi-arch)
   selenoid:
     image: aerokube/selenoid:1.11.3
     container_name: selenoid
@@ -53,14 +52,14 @@ services:
     environment:
       - DOCKER_API_VERSION=1.45
       - OVERRIDE_VIDEO_OUTPUT_DIR=${PWD}/allure-results
-    # Dinamik Tarayıcı Dosyası Seçimi (start_tests.py burayı doldurur)
+    # Dynamic browser configuration file selection (filled by start_tests.py)
     command: ["-conf", "/etc/selenoid/${BROWSERS_JSON}", "-log-output-dir", "/opt/selenoid/logs", "-video-output-dir", "/opt/selenoid/video", "-container-network", "shared-network", "-limit", "10", "-video-recorder-image", "${VIDEO_RECORDER_IMAGE}"]
     ports:
       - "4444:4444"
     networks:
       - shared-network
 
-  # 3. SELENOID UI (Otomatik Mimari: Aerokube resmi imajı multi-arch'tır)
+  # 3. SELENOID UI (Automatic architecture: official Aerokube image is multi-arch)
   selenoid-ui:
     image: aerokube/selenoid-ui:1.10.11
     container_name: selenoid-ui
