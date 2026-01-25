@@ -12,7 +12,6 @@ It goes beyond traditional automation by integrating **Self-Healing Infrastructu
 * **🤖 AI-Powered Debugging:** When a test fails, the framework automatically sends the error logs to **Google Gemini** or **OpenAI**. The AI analyzes the root cause and injects a formatted solution directly into the Allure Report HTML.
 * **🏗️ Smart Architecture Detection:** The `start_tests.py` script automatically detects the host CPU architecture (ARM64/M1 vs. AMD64) and dynamically builds/pulls the correct Docker images (Seleniarm vs. Selenoid), eliminating compatibility issues.
 * **🛡️ Zero-Race-Condition Video Management:** A custom `VideoManager` listens to Docker Daemon events (`destroy` signal) to ensure test videos are perfectly saved or deleted based on the test result, guaranteeing 100% data integrity.
-* **🌍 Localization & Globalization Testing:** Specific scenarios designed for landing pages to verify country-specific compliance and language routing (DE, FR, NL, etc.).
 * **📱 Unified Driver Factory:** A robust Factory Pattern implementation that manages Web (Chrome/Firefox), Remote (Selenoid), and Mobile (Android Appium) drivers from a single source of truth.
 * **🗄️ Polyglot Database Testing:** Native support for verifying data integrity across both **SQL (PostgreSQL)** and **NoSQL (ArangoDB)** databases.
 
